@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Data Siswa - SDN Rawabuntu 03</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        h2 {
+            color: #555;
+            margin: 20px 0 10px 0;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #444;
+        }
+        
+        select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border 0.3s;
+        }
+        
+        select:focus, textarea:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+        
+        textarea {
+            height: 200px;
+            resize: vertical;
+            font-family: monospace;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        
+        .loading {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+            display: block;
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .example {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 5px;
+            font-size: 14px;
+            font-family: monospace;
+        }
+        
+        .counter {
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #e0e0e0;
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+            display: none;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📤 UPLOAD DATA SISWA MASAL</h1>
+        
+        <div class="info-box">
+            <strong>📝 Petunjuk:</strong><br>
+            1. Pilih kelas yang akan diupload<br>
+            2. Copy data dari Excel/Google Sheets<br>
+            3. Paste di kolom teks<br>
+            4. Klik Upload<br>
+            <br>
+            <strong>Format data yang diterima:</strong>
+            <div class="example">
+                1,ADIVA CAESSA RAMADHANI<br>
+                2,AINAYYA FATIHYYATURAHMA<br>
+                3,AISYAH ZAHRA TUNISA RAMADANI<br>
+                ... dan seterusnya
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="kelas">Pilih Kelas:</label>
+            <select id="kelas">
+                <!-- Kelas 1: A-D -->
+                <option value="1A">Kelas 1A</option>
+                <option value="1B" selected>Kelas 1B</option>
+                <option value="1C">Kelas 1C</option>
+                <option value="1D">Kelas 1D</option>
+                
+                <!-- Kelas 2: A-E -->
+                <option value="2A">Kelas 2A</option>
+                <option value="2B">Kelas 2B</option>
+                <option value="2C">Kelas 2C</option>
+                <option value="2D">Kelas 2D</option>
+                <option value="2E">Kelas 2E</option>
+                
+                <!-- Kelas 3: A-E -->
+                <option value="3A">Kelas 3A</option>
+                <option value="3B">Kelas 3B</option>
+                <option value="3C">Kelas 3C</option>
+                <option value="3D">Kelas 3D</option>
+                <option value="3E">Kelas 3E</option>
+                
+                <!-- Kelas 4: A-F -->
+                <option value="4A">Kelas 4A</option>
+                <option value="4B">Kelas 4B</option>
+                <option value="4C">Kelas 4C</option>
+                <option value="4D">Kelas 4D</option>
+                <option value="4E">Kelas 4E</option>
+                <option value="4F">Kelas 4F</option>
+                
+                <!-- Kelas 5: A-E -->
+                <option value="5A">Kelas 5A</option>
+                <option value="5B">Kelas 5B</option>
+                <option value="5C">Kelas 5C</option>
+                <option value="5D">Kelas 5D</option>
+                <option value="5E">Kelas 5E</option>
+                
+                <!-- Kelas 6: A-E -->
+                <option value="6A">Kelas 6A</option>
+                <option value="6B">Kelas 6B</option>
+                <option value="6C">Kelas 6C</option>
+                <option value="6D">Kelas 6D</option>
+                <option value="6E">Kelas 6E</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="dataSiswa">Data Siswa (Format: NOMOR,NAMA):</label>
+            <textarea id="dataSiswa" placeholder="Contoh:
+1,ADIVA CAESSA RAMADHANI
+2,AINAYYA FATIHYYATURAHMA
+3,AISYAH ZAHRA TUNISA RAMADANI
+4,ALBY GIBRAN HITAWAN
+5,ALISHA RAMADHANI"></textarea>
+            <div class="counter">Jumlah baris: <span id="lineCount">0</span></div>
+        </div>
+        
+        <button id="uploadBtn" onclick="uploadData()">🚀 UPLOAD KE DATABASE</button>
+        
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        
+        <div class="status" id="status"></div>
+    </div>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
+    <script>
+        // Firebase Configuration - PASTIKAN SAMA DENGAN FILE LAIN!
+        const firebaseConfig = {
+            apiKey: "AIzaSyBk_9wYy7U0xQJgJNv1zJ8Xx7W6Q8Y5Z4A",
+            authDomain: "absensi-dan-penilaian-siswa.firebaseapp.com",
+            databaseURL: "https://absensi-dan-penilaian-siswa-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "absensi-dan-penilaian-siswa",
+            storageBucket: "absensi-dan-penilaian-siswa.firebasestorage.app",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdef1234567890abcdef"
+        };
+
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        } else {
+            firebase.app(); // if already initialized, use that one
+        }
+
+        // Get database reference
+        const database = firebase.database();
+
+        // Hitung jumlah baris saat ketik
+        document.getElementById('dataSiswa').addEventListener('input', function() {
+            const lines = this.value.split('\n').filter(line => line.trim() !== '');
+            document.getElementById('lineCount').textContent = lines.length;
+        });
+
+        // Fungsi utama upload
+        async function uploadData() {
+            const kelas = document.getElementById('kelas').value;
+            const rawData = document.getElementById('dataSiswa').value;
+            const lines = rawData.split('\n').filter(line => line.trim() !== '');
+            
+            if (lines.length === 0) {
+                showStatus('error', '❌ Data kosong! Silakan masukkan data siswa.');
+                return;
+            }
+            
+            const uploadBtn = document.getElementById('uploadBtn');
+            const progressBar = document.getElementById('progressBar');
+            const progressFill = document.getElementById('progressFill');
+            
+            // Nonaktifkan tombol dan tampilkan progress
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = '📤 Mengupload...';
+            progressBar.style.display = 'block';
+            
+            try {
+                let siswaData = {};
+                let validCount = 0;
+                let errorCount = 0;
+                
+                // Proses setiap baris
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    
+                    // Skip baris kosong
+                    if (!line) continue;
+                    
+                    // Parse data
+                    const parts = line.split(',');
+                    
+                    if (parts.length >= 2) {
+                        const nomor = parts[0].trim();
+                        const nama = parts.slice(1).join(',').trim();
+                        
+                        if (nomor && nama) {
+                            siswaData[`siswa${nomor}`] = { 
+                                nama: nama.toUpperCase() 
+                            };
+                            validCount++;
+                        } else {
+                            errorCount++;
+                        }
+                    } else {
+                        errorCount++;
+                    }
+                    
+                    // Update progress bar
+                    const progress = ((i + 1) / lines.length) * 100;
+                    progressFill.style.width = `${progress}%`;
+                }
+                
+                // Upload ke Firebase
+                showStatus('loading', `📤 Mengupload ${validCount} siswa ke database...`);
+                
+                await database.ref('students/' + kelas).set(siswaData);
+                
+                // Success
+                showStatus('success', 
+                    `✅ BERHASIL!<br>
+                    ${validCount} siswa berhasil diupload ke kelas ${kelas}<br>
+                    ${errorCount > 0 ? `(${errorCount} data error diabaikan)` : ''}`
+                );
+                
+                // Reset progress
+                progressFill.style.width = '100%';
+                
+                // Auto-reset setelah 3 detik
+                setTimeout(() => {
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = '🚀 UPLOAD KE DATABASE';
+                    progressBar.style.display = 'none';
+                    progressFill.style.width = '0%';
+                }, 3000);
+                
+            } catch (error) {
+                showStatus('error', 
+                    `❌ ERROR: ${error.message}<br>
+                    Periksa koneksi internet dan konfigurasi Firebase`
+                );
+                
+                // Reset
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = '🚀 UPLOAD KE DATABASE';
+                progressBar.style.display = 'none';
+                progressFill.style.width = '0%';
+            }
+        }
+
+        // Fungsi tampilkan status
+        function showStatus(type, message) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status ' + type;
+            statusDiv.innerHTML = message;
+        }
+
+        // Preload data contoh 1B
+        window.onload = function() {
+            // Contoh data 1B (40 siswa)
+            const contohData = `1,ADIVA CAESSA RAMADHANI
+2,AINAYYA FATIHYYATURAHMA
+3,AISYAH ZAHRA TUNISA RAMADANI
+4,ALBY GIBRAN HITAWAN
+5,ALISHA RAMADHANI
+6,AMARACHI QUEEN LOVELY BEN OKEHIE
+7,AMIRA SABRINA
+8,ARAYILA NAURA KHANZA
+9,ASSYIFA PUTRIYANTI IRAWAN
+10,ATIFAH HILYA NADHIF ANISA
+11,AYESHA MAFAZA
+12,AZELES KHALKA DZAHIN
+13,AZRIL RAHANDIKA ALFAREZI
+14,AZZURA AQUILLA SYAJID
+15,DAFFA WILDAN FATILAH
+16,DIMAS AL-FAJRI
+17,DINESHA PUTRI ADISCARRA
+18,ERVANO RAYYAN ALTHAIR
+19,FRISKA PUTRI ABDULLOH
+20,INARA HAURA SAKHI
+21,KAYLA NADHIFA ALMARDA
+22,KENZO DEKA ADELIO
+23,M. DAFI ATHAALLAH
+24,MOCHAMAD LEONEL ARKHA ANWAR
+25,MOHAMAD AHNAF MUTAWAKKIL
+26,MUHAMMAD BILAL ZAIDAN
+27,MUHAMMAD REVAN ALFARIZI
+28,MUHAMMAD YANSEN AL MUDZAKIR
+29,NADZIRA ASSYIFA YUJYANSYAH
+30,NAFEESA ALLEYA AZAHRA
+31,NATASHA SETIANI
+32,RANIA CAHAYA PRASETYO
+33,RAZAN ALFARIZQI EITRIANSYAH
+34,RINDU CITRA LARAS AYU
+35,SALMA PUTRI NAZWA S
+36,SHAKIRA ALMAHYRA
+37,SITI ALESHA KIRANA SETIAWAN
+38,YULIA FIRIR NURAENI
+39,YUSUF ARKAN RIANSAH
+40,ZAYN RIFOLI AMRI`;
+            
+            document.getElementById('dataSiswa').value = contohData;
+            
+            // Hitung jumlah baris
+            const lines = contohData.split('\n').filter(line => line.trim() !== '');
+            document.getElementById('lineCount').textContent = lines.length;
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoring Absensi - SDN RAWABUNTU 03</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Layout Grid Utama */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 992px) {
+            .dashboard-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Styling Umum */
+        .monitoring-controls {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border-bottom: 4px solid #ddd;
+        }
+
+        .stat-value { font-size: 2rem; font-weight: bold; margin-bottom: 5px; }
+        .stat-label { color: #7f8c8d; font-size: 0.9rem; text-transform: uppercase; }
+
+        .stat-h { border-color: #2ecc71; color: #2ecc71; }
+        .stat-s { border-color: #f1c40f; color: #f1c40f; }
+        .stat-i { border-color: #3498db; color: #3498db; }
+        .stat-a { border-color: #e74c3c; color: #e74c3c; }
+
+        /* Grid Kelas */
+        .classes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 15px;
+        }
+
+        .class-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #eee;
+            transition: transform 0.2s;
+        }
+        
+        .class-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+
+        .class-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed #eee;
+        }
+
+        .class-name { font-weight: bold; font-size: 1.1rem; }
+        .status-badge { font-size: 0.7rem; padding: 3px 8px; border-radius: 15px; }
+        .status-done { background: #d4edda; color: #155724; }
+        .status-pending { background: #f8d7da; color: #721c24; }
+
+        .mini-stats { display: flex; justify-content: space-between; font-size: 0.8rem; color: #555; }
+
+        /* Panel Aktivitas */
+        .activity-panel {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            height: fit-content;
+            max-height: 800px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 200px; /* Tinggi minimal biar rapi */
+        }
+
+        .activity-list {
+            overflow-y: auto;
+            flex: 1;
+            padding-right: 5px;
+        }
+
+        .activity-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .activity-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .activity-content { flex: 1; }
+        .activity-title { font-size: 0.95rem; font-weight: 600; color: #2c3e50; }
+        .activity-desc { font-size: 0.85rem; color: #7f8c8d; margin-top: 2px; }
+        .activity-time { font-size: 0.75rem; color: #95a5a6; margin-top: 4px; display: block; }
+
+        .icon-h { background: #2ecc71; }
+        .icon-s { background: #f1c40f; }
+        .icon-i { background: #3498db; }
+        .icon-a { background: #e74c3c; }
+
+        /* States */
+        .loading-spinner {
+            text-align: center;
+            padding: 20px;
+            color: #3498db;
+            font-style: italic;
+            display: none; /* Default hidden */
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 30px 20px;
+            color: #95a5a6;
+            display: none; /* Default hidden */
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="navbar-brand">
+            SDN RAWABUNTU 03
+            <span style="font-size: 14px; color: #7f8c8d;"> | Monitoring Realtime</span>
+        </div>
+        <div class="navbar-user">
+            <span id="adminNameDisplay">Administrator</span>
+            <button onclick="window.location.href='admin.html'" class="btn">Kembali</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="monitoring-controls">
+            <label style="font-weight: bold;">Tanggal:</label>
+            <input type="date" id="monitorDate" class="form-control" style="padding: 8px;">
+            <button onclick="initMonitoring()" class="btn btn-primary">Lihat Data</button>
+            <button onclick="window.location.reload()" class="btn btn-success">🔄 Refresh Halaman</button>
+        </div>
+
+        <h3 style="margin-bottom: 15px; color: #2c3e50;">Rekapitulasi Sekolah</h3>
+        <div class="summary-grid">
+            <div class="stat-card stat-h">
+                <div class="stat-value" id="totalH">0</div>
+                <div class="stat-label">Hadir</div>
+            </div>
+            <div class="stat-card stat-s">
+                <div class="stat-value" id="totalS">0</div>
+                <div class="stat-label">Sakit</div>
+            </div>
+            <div class="stat-card stat-i">
+                <div class="stat-value" id="totalI">0</div>
+                <div class="stat-label">Izin</div>
+            </div>
+            <div class="stat-card stat-a">
+                <div class="stat-value" id="totalA">0</div>
+                <div class="stat-label">Alpha</div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="left-panel">
+                <h3 style="margin-bottom: 15px; color: #2c3e50; display:flex; justify-content:space-between;">
+                    Status Input Per Kelas
+                    <span style="font-size: 0.9rem; font-weight: normal; color: #7f8c8d;" id="inputProgress">0/0 Selesai</span>
+                </h3>
+                
+                <div id="loadingClasses" class="loading-spinner">
+                    ⏳ Sedang memuat data kelas...
+                </div>
+
+                <div class="classes-grid" id="classesGrid"></div>
+            </div>
+
+            <div class="right-panel">
+                <h3 style="margin-bottom: 15px; color: #2c3e50;">Aktivitas Terbaru</h3>
+                <div class="activity-panel">
+                    
+                    <div id="loadingActivity" class="loading-spinner">
+                        ⏳ Memuat aktivitas...
+                    </div>
+
+                    <div id="emptyActivity" class="empty-state">
+                        <div style="font-size: 30px; margin-bottom: 10px;">📭</div>
+                        Belum ada aktivitas absensi tercatat pada tanggal ini.
+                    </div>
+                    
+                    <div class="activity-list" id="activityList">
+                        </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+        // 1. Konfigurasi Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyD_0hKhrz0vC7X_9KRrXiTOnRGI9Pi6tBI",
+            authDomain: "absensi-dan-penilaian-siswa.firebaseapp.com",
+            databaseURL: "https://absensi-dan-penilaian-siswa-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "absensi-dan-penilaian-siswa",
+            storageBucket: "absensi-dan-penilaian-siswa.firebasestorage.app",
+            messagingSenderId: "774655798848",
+            appId: "1:774655798848:web:d6ddb5a04d4acd91d1b9a5"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const auth = firebase.auth();
+        const database = firebase.database();
+
+        const allClassList = [
+            '1A', '1B', '1C', '1D', 
+            '2A', '2B', '2C', '2D', '2E',
+            '3A', '3B', '3C', '3D', '3E',
+            '4A', '4B', '4C', '4D', '4E', '4F',
+            '5A', '5B', '5C', '5D', '5E',
+            '6A', '6B', '6C', '6D', '6E'
+        ];
+
+        let isLoaded = false; // Flag untuk mengecek apakah data sudah masuk
+
+        document.addEventListener('DOMContentLoaded', function() {
+            auth.onAuthStateChanged((user) => {
+                if (!user || user.email !== 'admin@rbt.com') {
+                    window.location.href = 'index.html';
+                } else {
+                    document.getElementById('adminNameDisplay').textContent = localStorage.getItem('userName') || 'Administrator';
+                    const today = new Date().toISOString().split('T')[0];
+                    document.getElementById('monitorDate').value = today;
+                    initMonitoring();
+                }
+            });
+        });
+
+        function initMonitoring() {
+            const date = document.getElementById('monitorDate').value;
+            if (!date) return;
+
+            // Reset UI States
+            isLoaded = false;
+            document.getElementById('loadingClasses').style.display = 'block';
+            document.getElementById('loadingActivity').style.display = 'block';
+            document.getElementById('emptyActivity').style.display = 'none';
+            document.getElementById('classesGrid').innerHTML = '';
+            document.getElementById('activityList').innerHTML = '';
+
+            // Set Timeout Safety (Jika 5 detik masih loading, paksa berhenti)
+            setTimeout(() => {
+                if (!isLoaded) {
+                    document.getElementById('loadingClasses').style.display = 'none';
+                    document.getElementById('loadingActivity').style.display = 'none';
+                    if (document.getElementById('activityList').children.length === 0) {
+                        document.getElementById('emptyActivity').style.display = 'block';
+                    }
+                }
+            }, 5000);
+
+            // Ambil Data Realtime
+            database.ref(`attendance/${date}`).on('value', (snapshot) => {
+                try {
+                    isLoaded = true; // Data berhasil diterima
+                    const data = snapshot.val() || {};
+                    
+                    // Sembunyikan Loading
+                    document.getElementById('loadingClasses').style.display = 'none';
+                    document.getElementById('loadingActivity').style.display = 'none';
+
+                    // Variables
+                    let grandTotal = { H: 0, S: 0, I: 0, A: 0 };
+                    let classesInputted = 0;
+                    let allActivities = [];
+                    const gridContainer = document.getElementById('classesGrid');
+                    
+                    // Bersihkan container
+                    gridContainer.innerHTML = ''; 
+
+                    // --- PROSES DATA KELAS ---
+                    allClassList.forEach(className => {
+                        const classData = data[className];
+                        const isInputted = !!classData; // True jika ada data
+                        
+                        let stats = { H: 0, S: 0, I: 0, A: 0 };
+                        
+                        if (isInputted) {
+                            classesInputted++;
+                            // Gunakan Object.keys/values dengan aman
+                            const students = Object.values(classData);
+                            
+                            students.forEach(record => {
+                                // Hitung Total
+                                if (record.status && stats.hasOwnProperty(record.status)) {
+                                    stats[record.status]++;
+                                    grandTotal[record.status]++;
+                                }
+
+                                // Simpan untuk Aktivitas Feed
+                                // Fallback jika nama tidak ada
+                                const studentName = record.name || 'Siswa';
+                                const teacherName = record.teacher || 'Guru';
+                                const time = record.timestamp || record.updatedAt || Date.now();
+
+                                allActivities.push({
+                                    name: studentName,
+                                    className: className,
+                                    status: record.status,
+                                    time: time,
+                                    teacher: teacherName
+                                });
+                            });
+                        }
+
+                        // Render Kartu Kelas
+                        const cardHTML = `
+                            <div class="class-card" style="border-left: 5px solid ${isInputted ? '#2ecc71' : '#e74c3c'}">
+                                <div class="class-header">
+                                    <span class="class-name">${className}</span>
+                                    <span class="status-badge ${isInputted ? 'status-done' : 'status-pending'}">
+                                        ${isInputted ? 'Selesai' : 'Belum'}
+                                    </span>
+                                </div>
+                                <div class="mini-stats">
+                                    <div style="color:#27ae60">H:<b>${stats.H}</b></div>
+                                    <div style="color:#f39c12">S:<b>${stats.S}</b></div>
+                                    <div style="color:#2980b9">I:<b>${stats.I}</b></div>
+                                    <div style="color:#c0392b">A:<b>${stats.A}</b></div>
+                                </div>
+                            </div>
+                        `;
+                        gridContainer.innerHTML += cardHTML;
+                    });
+
+                    // Update Angka Total di Atas
+                    document.getElementById('totalH').textContent = grandTotal.H;
+                    document.getElementById('totalS').textContent = grandTotal.S;
+                    document.getElementById('totalI').textContent = grandTotal.I;
+                    document.getElementById('totalA').textContent = grandTotal.A;
+                    document.getElementById('inputProgress').textContent = `${classesInputted}/${allClassList.length} Selesai`;
+
+                    // --- PROSES AKTIVITAS TERBARU ---
+                    renderActivityFeed(allActivities);
+
+                } catch (error) {
+                    console.error("Error processing data:", error);
+                    document.getElementById('loadingClasses').textContent = "Terjadi kesalahan memproses data.";
+                }
+            }, (error) => {
+                console.error("Firebase Error:", error);
+                document.getElementById('loadingClasses').textContent = "Gagal koneksi ke database.";
+            });
+        }
+
+        function renderActivityFeed(activities) {
+            const listContainer = document.getElementById('activityList');
+            const emptyState = document.getElementById('emptyActivity');
+            
+            listContainer.innerHTML = ''; // Reset list
+
+            if (!activities || activities.length === 0) {
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+
+            // Urutkan waktu terbaru
+            activities.sort((a, b) => b.time - a.time);
+
+            // Ambil 20 teratas
+            const recentActivities = activities.slice(0, 20);
+
+            recentActivities.forEach(act => {
+                const dateObj = new Date(act.time);
+                const timeStr = dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                
+                let statusText = '';
+                let statusClass = '';
+                
+                switch(act.status) {
+                    case 'H': statusText = 'Hadir'; statusClass = 'icon-h'; break;
+                    case 'S': statusText = 'Sakit'; statusClass = 'icon-s'; break;
+                    case 'I': statusText = 'Izin'; statusClass = 'icon-i'; break;
+                    case 'A': statusText = 'Alpha'; statusClass = 'icon-a'; break;
+                    default: statusText = '-'; statusClass = 'icon-a';
+                }
+
+                const itemHTML = `
+                    <div class="activity-item">
+                        <div class="activity-icon ${statusClass}">
+                            ${act.status}
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-title">${act.name} <small>(${act.className})</small></div>
+                            <div class="activity-desc">Status <b>${statusText}</b> • Oleh ${act.teacher}</div>
+                            <span class="activity-time">🕒 Pukul ${timeStr}</span>
+                        </div>
+                    </div>
+                `;
+                listContainer.innerHTML += itemHTML;
+            });
+        }
+    </script>
+</body>
+</html>

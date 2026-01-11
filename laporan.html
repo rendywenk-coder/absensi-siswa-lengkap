@@ -1,0 +1,345 @@
+// Firebase configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyD_0hKhrz0vC7X_9KRrXiTOnRGI9Pi6tBI",
+    authDomain: "absensi-dan-penilaian-siswa.firebaseapp.com",
+    databaseURL: "https://absensi-dan-penilaian-siswa-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "absensi-dan-penilaian-siswa",
+    storageBucket: "absensi-dan-penilaian-siswa.firebasestorage.app",
+    messagingSenderId: "774655798848",
+    appId: "1:774655798848:web:d6ddb5a04d4acd91d1b9a5"
+};
+
+// Initialize Firebase
+let app, auth, database;
+try {
+    // Check if Firebase is already initialized
+    if (!firebase.apps.length) {
+        app = firebase.initializeApp(firebaseConfig);
+        console.log("✅ Firebase app initialized");
+    } else {
+        app = firebase.app();
+        console.log("✅ Using existing Firebase app");
+    }
+    
+    auth = firebase.auth();
+    database = firebase.database();
+    console.log("✅ Firebase services initialized successfully");
+} catch (error) {
+    console.error("❌ Firebase initialization error:", error);
+    alert("Gagal menginisialisasi Firebase. Periksa koneksi internet Anda.");
+}
+
+// TEACHER CLASS MAPPING - DIPERBARUI DENGAN SEMUA KELAS
+const teacherClassMapping = {
+    // ADMIN - BISA AKSES SEMUA KELAS
+    'admin@rbt.com': { 
+        role: 'admin', 
+        classes: ['1A', '1B', '1C', '1D', '2A', '2B', '2C', '2D', '2E', '3A', '3B', '3C', '3D', '3E', '4A', '4B', '4C', '4D', '4E', '4F', '5A', '5B', '5C', '5D', '5E', '6A', '6B', '6C', '6D', '6E'],
+        name: 'Administrator System'
+    },
+    
+    // KELAS 1
+    'guru1a@rbt.com': { role: 'guru', classes: ['1A'], name: 'Guru Kelas 1A' },
+    'guru1b@rbt.com': { role: 'guru', classes: ['1B'], name: 'Guru Kelas 1B' },
+    'guru1c@rbt.com': { role: 'guru', classes: ['1C'], name: 'Guru Kelas 1C' },
+    'guru1d@rbt.com': { role: 'guru', classes: ['1D'], name: 'Guru Kelas 1D' },
+    
+    // KELAS 2
+    'guru2a@rbt.com': { role: 'guru', classes: ['2A'], name: 'Guru Kelas 2A' },
+    'guru2b@rbt.com': { role: 'guru', classes: ['2B'], name: 'Guru Kelas 2B' },
+    'guru2c@rbt.com': { role: 'guru', classes: ['2C'], name: 'Guru Kelas 2C' },
+    'guru2d@rbt.com': { role: 'guru', classes: ['2D'], name: 'Guru Kelas 2D' },
+    'guru2e@rbt.com': { role: 'guru', classes: ['2E'], name: 'Guru Kelas 2E' },
+    
+    // KELAS 3
+    'guru3a@rbt.com': { role: 'guru', classes: ['3A'], name: 'Guru Kelas 3A' },
+    'guru3b@rbt.com': { role: 'guru', classes: ['3B'], name: 'Guru Kelas 3B' },
+    'guru3c@rbt.com': { role: 'guru', classes: ['3C'], name: 'Guru Kelas 3C' },
+    'guru3d@rbt.com': { role: 'guru', classes: ['3D'], name: 'Guru Kelas 3D' },
+    'guru3e@rbt.com': { role: 'guru', classes: ['3E'], name: 'Guru Kelas 3E' },
+    
+    // KELAS 4
+    'guru4a@rbt.com': { role: 'guru', classes: ['4A'], name: 'Guru Kelas 4A' },
+    'guru4b@rbt.com': { role: 'guru', classes: ['4B'], name: 'Guru Kelas 4B' },
+    'guru4c@rbt.com': { role: 'guru', classes: ['4C'], name: 'Guru Kelas 4C' },
+    'guru4d@rbt.com': { role: 'guru', classes: ['4D'], name: 'Guru Kelas 4D' },
+    'guru4e@rbt.com': { role: 'guru', classes: ['4E'], name: 'Guru Kelas 4E' },
+    'guru4f@rbt.com': { role: 'guru', classes: ['4F'], name: 'Guru Kelas 4F' },
+    
+    // KELAS 5
+    'guru5a@rbt.com': { role: 'guru', classes: ['5A'], name: 'Guru Kelas 5A' },
+    'guru5b@rbt.com': { role: 'guru', classes: ['5B'], name: 'Guru Kelas 5B' },
+    'guru5c@rbt.com': { role: 'guru', classes: ['5C'], name: 'Guru Kelas 5C' },
+    'guru5d@rbt.com': { role: 'guru', classes: ['5D'], name: 'Guru Kelas 5D' },
+    'guru5e@rbt.com': { role: 'guru', classes: ['5E'], name: 'Guru Kelas 5E' },
+    
+    // KELAS 6
+    'guru6a@rbt.com': { role: 'guru', classes: ['6A'], name: 'Guru Kelas 6A' },
+    'guru6b@rbt.com': { role: 'guru', classes: ['6B'], name: 'Guru Kelas 6B' },
+    'guru6c@rbt.com': { role: 'guru', classes: ['6C'], name: 'Guru Kelas 6C' },
+    'guru6d@rbt.com': { role: 'guru', classes: ['6D'], name: 'Guru Kelas 6D' },
+    'guru6e@rbt.com': { role: 'guru', classes: ['6E'], name: 'Guru Kelas 6E' },
+    
+    // DEFAULT ACCOUNTS FOR TESTING
+    'test@rbt.com': { role: 'guru', classes: ['1A', '1B'], name: 'Guru Test' },
+    'demo@rbt.com': { role: 'admin', classes: ['1A', '2A', '3A'], name: 'Demo Admin' }
+};
+
+// Authentication check function
+function checkAuth(requiredRole = null) {
+    return new Promise((resolve, reject) => {
+        const unsubscribe = auth.onAuthStateChanged((user) => {
+            unsubscribe(); // Unsubscribe immediately
+            
+            if (!user) {
+                console.log("❌ No user logged in, redirecting to login");
+                window.location.href = 'index.html';
+                reject('User not authenticated');
+                return;
+            }
+            
+            const userInfo = teacherClassMapping[user.email];
+            if (!userInfo) {
+                console.log("❌ User not in mapping:", user.email);
+                showNotification('Akun Anda tidak terdaftar dalam sistem', 'error');
+                auth.signOut();
+                localStorage.clear();
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 2000);
+                reject('User not authorized');
+                return;
+            }
+
+            // Save user info to localStorage
+            localStorage.setItem('userEmail', user.email);
+            localStorage.setItem('userRole', userInfo.role);
+            localStorage.setItem('userName', userInfo.name || user.email.split('@')[0]);
+            
+            if (userInfo.role === 'guru') {
+                localStorage.setItem('teacherClasses', JSON.stringify(userInfo.classes));
+            } else if (userInfo.role === 'admin') {
+                localStorage.setItem('teacherClasses', JSON.stringify(userInfo.classes));
+            }
+            
+            console.log(`✅ User authenticated: ${user.email}, Role: ${userInfo.role}, Classes: ${userInfo.classes}`);
+            
+            // Check role requirement if specified
+            if (requiredRole && userInfo.role !== requiredRole) {
+                console.log("⚠️ Role mismatch, redirecting to appropriate page");
+                if (userInfo.role === 'admin') {
+                    window.location.href = 'admin.html';
+                } else {
+                    window.location.href = 'dashboard.html';
+                }
+                reject('Insufficient permissions');
+                return;
+            }
+            
+            resolve(userInfo);
+        }, (error) => {
+            console.error("❌ Auth state error:", error);
+            showNotification('Error autentikasi', 'error');
+            reject(error);
+        });
+    });
+}
+
+// Logout function
+function logout() {
+    if (confirm('Apakah Anda yakin ingin logout dari sistem?')) {
+        auth.signOut().then(() => {
+            localStorage.clear();
+            window.location.href = 'index.html';
+        }).catch((error) => {
+            console.error('❌ Logout error:', error);
+            showNotification('Gagal logout. Silahkan coba lagi.', 'error');
+        });
+    }
+}
+
+// Show notification
+function showNotification(message, type = 'success') {
+    // Remove existing notification
+    const existing = document.querySelector('.notification');
+    if (existing) existing.remove();
+
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 10px;
+        color: white;
+        font-weight: 500;
+        z-index: 10000;
+        animation: slideIn 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    `;
+    
+    if (type === 'success') {
+        notification.style.background = '#38a169';
+    } else if (type === 'error') {
+        notification.style.background = '#e53e3e';
+    } else {
+        notification.style.background = '#4299e1';
+    }
+    
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transition = 'opacity 0.3s';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
+}
+
+// Toggle sidebar for mobile
+function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.querySelector('.overlay');
+    if (sidebar && overlay) {
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
+        
+        if (sidebar.classList.contains('active')) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'auto';
+        }
+    }
+}
+
+// Initialize data siswa jika belum ada
+function initializeStudentData() {
+    database.ref('students').once('value').then((snapshot) => {
+        if (!snapshot.exists()) {
+            console.log('📝 Initializing sample student data...');
+            
+            // Sample data structure
+            const sampleData = {};
+            
+            // Create sample data for each class
+            const classes = ['1A', '1B', '1C', '1D', '2A', '2B', '2C', '2D', '2E', '3A', '3B', '3C', '3D', '3E', 
+                           '4A', '4B', '4C', '4D', '4E', '4F', '5A', '5B', '5C', '5D', '5E', '6A', '6B', '6C', '6D', '6E'];
+            
+            // Sample Indonesian names
+            const sampleNames = [
+                'Ahmad Fauzi', 'Budi Santoso', 'Citra Dewi', 'Dian Pratiwi', 'Eko Prasetyo',
+                'Fitriani Sari', 'Gunawan Wijaya', 'Hesti Utami', 'Indra Setiawan', 'Joko Susilo',
+                'Kartika Putri', 'Lukman Hakim', 'Mega Wati', 'Nurhaliza', 'Oki Setiawan',
+                'Putri Ayu', 'Rizki Pratama', 'Siti Aminah', 'Tono Wijaya', 'Utari Puspita'
+            ];
+            
+            classes.forEach(className => {
+                sampleData[className] = {};
+                for (let i = 1; i <= 15; i++) {
+                    const studentId = `${className.replace(/\D/g, '')}${i.toString().padStart(3, '0')}`;
+                    const randomName = sampleNames[Math.floor(Math.random() * sampleNames.length)];
+                    sampleData[className][studentId] = {
+                        name: `${randomName} ${i}`,
+                        nis: studentId,
+                        kelas: className,
+                        gender: i % 2 === 0 ? 'L' : 'P',
+                        createdAt: new Date().toISOString()
+                    };
+                }
+            });
+            
+            database.ref('students').set(sampleData)
+                .then(() => {
+                    console.log('✅ Sample student data initialized');
+                    showNotification('Data siswa contoh berhasil diinisialisasi', 'success');
+                })
+                .catch(error => {
+                    console.error('❌ Error initializing student data:', error);
+                });
+        } else {
+            console.log('✅ Student data already exists');
+        }
+    });
+}
+
+// Mobile optimizations
+function initMobileOptimizations() {
+    // Fix viewport height for mobile
+    function setVH() {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
+    
+    window.addEventListener('resize', setVH);
+    window.addEventListener('orientationchange', setVH);
+    setVH();
+    
+    // Prevent double tap zoom on mobile
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', function(event) {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 300) {
+            event.preventDefault();
+        }
+        lastTouchEnd = now;
+    }, false);
+    
+    // Fix iOS input zoom issue
+    if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+        const inputs = document.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            input.addEventListener('focus', function() {
+                this.style.fontSize = '16px';
+            });
+            input.addEventListener('blur', function() {
+                this.style.fontSize = '';
+            });
+        });
+    }
+}
+
+// Export for use in other files
+window.firebaseApp = {
+    auth,
+    database,
+    checkAuth,
+    logout,
+    showNotification,
+    toggleSidebar,
+    initMobileOptimizations,
+    teacherClassMapping,
+    initializeStudentData
+};
+
+// Global error handler
+window.addEventListener('error', function(e) {
+    console.error('🌐 Global error:', e.error);
+    showNotification('Terjadi kesalahan sistem. Silakan refresh halaman.', 'error');
+});
+
+window.addEventListener('unhandledrejection', function(e) {
+    console.error('🌐 Unhandled promise rejection:', e.reason);
+    showNotification('Terjadi kesalahan sistem. Silakan refresh halaman.', 'error');
+});
+
+// Initialize on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('📄 DOM loaded, initializing Firebase app...');
+        // Initialize student data if needed
+        setTimeout(initializeStudentData, 1000);
+        initMobileOptimizations();
+    });
+} else {
+    // DOM already loaded
+    console.log('📄 DOM already loaded, initializing Firebase app...');
+    setTimeout(initializeStudentData, 1000);
+    initMobileOptimizations();
+}
+
+console.log('🔥 Firebase App module loaded successfully');

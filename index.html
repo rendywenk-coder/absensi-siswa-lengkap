@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - SDN Rawabuntu 03</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .login-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 450px;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .logo {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+        }
+        
+        input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #e1e1e1;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border 0.3s;
+        }
+        
+        input:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+        
+        .btn-login {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+            transition: transform 0.2s;
+        }
+        
+        .btn-login:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn-login:active {
+            transform: translateY(0);
+        }
+        
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .success-message {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .loading {
+            display: none;
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .login-info {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 25px;
+            font-size: 14px;
+            color: #666;
+            text-align: left;
+        }
+        
+        .login-info h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .user-role {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 8px;
+            border-radius: 5px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .user-role:hover {
+            background: #f0f0f0;
+        }
+        
+        .role-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #667eea;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+        
+        .user-role-info {
+            flex: 1;
+        }
+        
+        .user-role-info strong {
+            display: block;
+            color: #333;
+        }
+        
+        .user-role-info small {
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .arrow {
+            color: #999;
+            font-size: 18px;
+        }
+        
+        footer {
+            margin-top: 30px;
+            color: #888;
+            font-size: 14px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+        
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 25px;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+            
+            .logo {
+                width: 100px;
+                height: 100px;
+                font-size: 32px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">RBT03</div>
+        
+        <h1>SDN RAWABUNTU 03</h1>
+        <p class="subtitle">Sistem Absensi & Penilaian Digital</p>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Email Guru</label>
+                <input type="email" id="email" placeholder="contoh: kelas1a@rbt.com" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="••••••••" required>
+            </div>
+            
+            <button type="submit" class="btn-login">Masuk ke Sistem</button>
+        </form>
+        
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <p style="margin-top: 10px;">Memverifikasi...</p>
+        </div>
+        
+        <div class="error-message" id="errorMessage"></div>
+        <div class="success-message" id="successMessage"></div>
+        
+        <div class="login-info">
+            <h3>🔐 Sistem Login Berbasis Email:</h3>
+            
+            <div class="user-role" onclick="fillCredentials('kelas1a@rbt.com', 'password123')">
+                <div class="role-icon">1A</div>
+                <div class="user-role-info">
+                    <strong>Guru Kelas 1A</strong>
+                    <small>Email: kelas1a@rbt.com</small>
+                </div>
+                <div class="arrow">→</div>
+            </div>
+            
+            <div class="user-role" onclick="fillCredentials('kelas5b@rbt.com', 'password123')">
+                <div class="role-icon">5B</div>
+                <div class="user-role-info">
+                    <strong>Guru Kelas 5B</strong>
+                    <small>Email: kelas5b@rbt.com</small>
+                </div>
+                <div class="arrow">→</div>
+            </div>
+            
+            <div class="user-role" onclick="fillCredentials('pjok1@rbt.com', 'password123')">
+                <div class="role-icon">🏃</div>
+                <div class="user-role-info">
+                    <strong>Guru PJOK 1</strong>
+                    <small>Mengajar Kelas 1A-1D, 2A-2E</small>
+                </div>
+                <div class="arrow">→</div>
+            </div>
+            
+            <div class="user-role" onclick="fillCredentials('pjok3@rbt.com', 'password123')">
+                <div class="role-icon">⚽</div>
+                <div class="user-role-info">
+                    <strong>Guru PJOK 3</strong>
+                    <small>Mengajar Kelas 5A-5E, 6A-6E</small>
+                </div>
+                <div class="arrow">→</div>
+            </div>
+            
+            <div class="user-role" onclick="fillCredentials('admin@rbt.com', 'admin123')">
+                <div class="role-icon">👑</div>
+                <div class="user-role-info">
+                    <strong>Administrator</strong>
+                    <small>Akses semua kelas</small>
+                </div>
+                <div class="arrow">→</div>
+            </div>
+        </div>
+        
+        <footer>
+            &copy; 2024 SDN Rawabuntu 03. Sistem v2.0<br>
+            <small style="color: #666;">Login dengan email @rbt.com yang telah didaftarkan</small>
+        </footer>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD_0hKhrz0vC7X_9KRrXiTOnRGI9Pi6tBI",
+            authDomain: "absensi-dan-penilaian-siswa.firebasestorage.app",
+            databaseURL: "https://absensi-dan-penilaian-siswa-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "absensi-dan-penilaian-siswa",
+            storageBucket: "absensi-dan-penilaian-siswa.firebasestorage.app",
+            messagingSenderId: "774655798848",
+            appId: "1:774655798848:web:d6ddb5a04d4acd91d1b9a5"
+        };
+
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        
+        const auth = firebase.auth();
+
+        // Helper functions
+        function fillCredentials(email, password) {
+            document.getElementById('email').value = email;
+            document.getElementById('password').value = password;
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.innerHTML = `❌ ${message}`;
+            errorEl.style.display = 'block';
+            document.getElementById('successMessage').style.display = 'none';
+        }
+        
+        function showSuccess(message) {
+            const successEl = document.getElementById('successMessage');
+            successEl.innerHTML = `✅ ${message}`;
+            successEl.style.display = 'block';
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+
+        // User role functions (simplified version)
+        function getUserClasses(email) {
+            if (!email) return [];
+            
+            const emailLower = email.toLowerCase();
+            
+            // Guru Kelas (kelas1a@rbt.com → hanya kelas 1A)
+            if (emailLower.includes('kelas') && emailLower.endsWith('@rbt.com')) {
+                // Extract class from email
+                const match = emailLower.match(/kelas(\d+)([a-z])?/);
+                if (match) {
+                    const num = match[1];
+                    const letter = match[2] ? match[2].toUpperCase() : 'A';
+                    return [`${num}${letter}`.toUpperCase()];
+                }
+                return [];
+            }
+            
+            // Guru PJOK
+            if (emailLower === 'pjok1@rbt.com') return ['1A', '1B', '1C', '1D', '2A', '2B', '2C', '2D', '2E'];
+            if (emailLower === 'pjok2@rbt.com') return ['3A', '3B', '3C', '3D', '3E', '4A', '4B', '4C', '4D', '4E', '4F'];
+            if (emailLower === 'pjok3@rbt.com') return ['5A', '5B', '5C', '5D', '5E', '6A', '6B', '6C', '6D', '6E'];
+            
+            // Admin
+            if (emailLower === 'admin@rbt.com') return ['ALL'];
+            
+            return [];
+        }
+
+        function getUserDisplayName(email) {
+            if (!email) return 'User';
+            
+            const emailLower = email.toLowerCase();
+            
+            if (emailLower === 'admin@rbt.com') return 'Administrator';
+            if (emailLower === 'pjok1@rbt.com') return 'Guru PJOK 1';
+            if (emailLower === 'pjok2@rbt.com') return 'Guru PJOK 2';
+            if (emailLower === 'pjok3@rbt.com') return 'Guru PJOK 3';
+            
+            // For class teachers
+            if (emailLower.includes('kelas')) {
+                const match = emailLower.match(/kelas(\d+)([a-z])?/);
+                if (match) {
+                    const num = match[1];
+                    const letter = match[2] ? match[2].toUpperCase() : 'A';
+                    return `Guru Kelas ${num}${letter}`;
+                }
+                return 'Guru Kelas';
+            }
+            
+            return email.split('@')[0];
+        }
+
+        // Handle form submission
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            
+            // Validate email
+            if (!email || !email.endsWith('@rbt.com')) {
+                showError('Email harus menggunakan domain @rbt.com');
+                return;
+            }
+            
+            // Validate password
+            if (!password || password.length < 6) {
+                showError('Password minimal 6 karakter');
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+            
+            // Sign in with Firebase
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    const user = userCredential.user;
+                    
+                    // Get user info
+                    const userName = getUserDisplayName(email);
+                    const userClasses = getUserClasses(email);
+                    
+                    // Save to localStorage
+                    localStorage.setItem('userEmail', email);
+                    localStorage.setItem('userName', userName);
+                    localStorage.setItem('userClasses', JSON.stringify(userClasses));
+                    
+                    // Show success
+                    document.getElementById('loading').style.display = 'none';
+                    showSuccess(`Login berhasil! Selamat datang ${userName}`);
+                    
+                    // Redirect to dashboard after 1 second
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 1000);
+                })
+                .catch((error) => {
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    let errorMessage = 'Login gagal';
+                    switch(error.code) {
+                        case 'auth/invalid-email':
+                            errorMessage = 'Format email tidak valid';
+                            break;
+                        case 'auth/user-not-found':
+                            errorMessage = 'Email tidak terdaftar';
+                            break;
+                        case 'auth/wrong-password':
+                            errorMessage = 'Password salah';
+                            break;
+                        case 'auth/too-many-requests':
+                            errorMessage = 'Terlalu banyak percobaan. Coba lagi nanti';
+                            break;
+                        default:
+                            errorMessage = `Error: ${error.message}`;
+                    }
+                    
+                    showError(errorMessage);
+                });
+        });
+
+        // Check if user is already logged in
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // User is already logged in, redirect to dashboard
+                window.location.href = 'dashboard.html';
+            }
+        });
+
+        // Pre-fill for testing
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-fill demo account on click
+            const demoAccounts = {
+                'kelas1a': ['kelas1a@rbt.com', '123456'],
+                'kelas5b': ['kelas5b@rbt.com', '123456'],
+                'pjok1': ['pjok1@rbt.com', '123456'],
+                'pjok3': ['pjok3@rbt.com', '123456'],
+                'admin': ['admin@rbt.com', '123456']
+            };
+            
+            // Get demo from URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const demo = urlParams.get('demo');
+            
+            if (demo && demoAccounts[demo]) {
+                fillCredentials(demoAccounts[demo][0], demoAccounts[demo][1]);
+                document.getElementById('loginForm').submit();
+            }
+        });
+    </script>
+</body>
+</html>

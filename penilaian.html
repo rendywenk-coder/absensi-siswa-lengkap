@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Penilaian - SDN RAWABUNTU 03</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .controls-wrapper {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .semester-controls {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .semester-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        
+        .semester-btn.active {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+        
+        .score-input {
+            width: 60px;
+            padding: 6px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 0.85rem;
+            background: white;
+        }
+        
+        @media (max-width: 480px) {
+            .score-input {
+                width: 50px;
+                padding: 4px;
+                font-size: 0.8rem;
+            }
+        }
+        
+        .score-input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
+        }
+        
+        .total-score-cell {
+            font-weight: bold;
+            font-size: 0.9rem;
+            text-align: center;
+            min-width: 70px;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        
+        .save-btn {
+            padding: 6px 10px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        
+        .save-btn:hover {
+            background: #218838;
+        }
+        
+        .save-all-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+            text-align: center;
+        }
+        
+        .save-all-btn {
+            padding: 12px 24px;
+            background: #17a2b8;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 1rem;
+            transition: all 0.3s;
+            width: 100%;
+            max-width: 300px;
+        }
+        
+        .save-all-btn:hover {
+            background: #138496;
+        }
+        
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 10px 0 20px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .data-table {
+            font-size: 0.85rem;
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .data-table th, 
+        .data-table td {
+            padding: 8px 6px;
+            vertical-align: middle;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .data-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+            text-align: center;
+        }
+        
+        .loading-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+        
+        .loading-state .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .notification {
+            position: fixed;
+            top: 60px;
+            right: 10px;
+            padding: 10px 15px;
+            border-radius: 5px;
+            z-index: 1000;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+            animation: slideIn 0.3s ease;
+            max-width: 300px;
+            word-wrap: break-word;
+        }
+        
+        .notification.success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .notification.error {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .notification.info {
+            background: #3498db;
+            color: white;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .formula-info {
+            background: #e3f2fd;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            margin: 10px 0;
+            border-left: 4px solid #2196f3;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+        
+        .error-message {
+            color: #dc3545;
+            padding: 10px;
+            background: #f8d7da;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .auto-detect-btn {
+            margin-top: 10px;
+            background: #ffc107;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .auto-detect-btn:hover {
+            background: #e0a800;
+        }
+
+        .student-name-cell {
+            min-width: 180px;
+            max-width: 250px;
+        }
+
+        .student-id-badge {
+            display: inline-block;
+            background: #e9ecef;
+            color: #6c757d;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            margin-top: 3px;
+        }
+
+        .role-info {
+            background: #e8f5e8;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            margin-bottom: 10px;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .sync-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            background: #f8f9fa;
+        }
+
+        .sync-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <div class="navbar">
+        <div class="navbar-brand">
+            SDN RAWABUNTU 03
+            <span style="font-size: 11px; color: #7f8c8d;"> | Penilaian</span>
+        </div>
+        <div class="navbar-user">
+            <span id="userName"></span>
+            <button onclick="goBack()" class="btn" style="padding: 6px 10px; font-size: 0.8rem;">←</button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Role Information -->
+        <div id="roleInfo" class="role-info" style="display: none;">
+            <strong>👤 Role:</strong> <span id="roleDisplay"></span>
+            <span id="kelasAccess" style="margin-left: 10px;"></span>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls-wrapper">
+            <div style="margin-bottom: 15px;">
+                <label class="control-label">Pilih Kelas</label>
+                <select id="classSelect" class="form-control">
+                    <option value="">-- Pilih Kelas --</option>
+                </select>
+                <div id="adminControls" style="display: none; gap: 10px; margin-top: 10px;">
+                    <button onclick="detectClasses()" class="auto-detect-btn">
+                        🔍 Deteksi Semua Kelas
+                    </button>
+                </div>
+                <div id="nonAdminControls" style="display: none; margin-top: 10px;">
+                    <button onclick="loadMyClasses()" class="auto-detect-btn" style="background: #4CAF50; color: white;">
+                        🔄 Muat Kelas Saya
+                    </button>
+                </div>
+                
+                <!-- Sync Status -->
+                <div id="syncStatus" class="sync-status" style="display: none;">
+                    <div class="sync-indicator"></div>
+                    <span>Data tersinkronisasi dengan Firebase</span>
+                </div>
+            </div>
+            
+            <div>
+                <label class="control-label">Semester</label>
+                <div class="semester-controls">
+                    <button id="semester1" class="semester-btn active" onclick="setSemester(1)">
+                        Semester 1
+                        <span style="background: #e83e8c; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.65rem; margin-left: 3px;">STS</span>
+                    </button>
+                    <button id="semester2" class="semester-btn" onclick="setSemester(2)">
+                        Semester 2
+                        <span style="background: #6f42c1; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.65rem; margin-left: 3px;">SAS</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Formula Information -->
+            <div class="formula-info">
+                📊 <strong>Rumus Nilai Total:</strong><br>
+                <small>(65% × Rata-rata Sumatif) + (35% × STS/SAS)</small>
+            </div>
+            
+            <div id="errorMessage" class="error-message"></div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button onclick="loadStudents()" class="btn btn-info" style="flex: 1;">
+                    🔄 Muat Data Siswa
+                </button>
+                <button onclick="saveAllScores()" class="btn btn-success" style="flex: 1;">
+                    💾 Simpan Semua
+                </button>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #28a745;"></div>
+                <span>Baik (85-100)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ffc107;"></div>
+                <span>Cukup (70-84)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #dc3545;"></div>
+                <span>Kurang (0-69)</span>
+            </div>
+        </div>
+
+        <!-- Students Table -->
+        <div class="card">
+            <h3 class="card-title" id="assessmentTitle">
+                Penilaian Semester 1
+                <span id="selectedClassText" style="font-size: 0.8rem; color: #3498db; font-weight: normal;">
+                    | Pilih kelas terlebih dahulu
+                </span>
+            </h3>
+            
+            <div class="table-container" style="overflow-x: auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;">No</th>
+                            <th class="student-name-cell">Nama Siswa</th>
+                            <th style="width: 70px;">S1</th>
+                            <th style="width: 70px;">S2</th>
+                            <th style="width: 70px;">S3</th>
+                            <th style="width: 70px;">S4</th>
+                            <th id="stsHeader" style="width: 70px;">STS</th>
+                            <th id="sasHeader" style="width: 70px; display: none;">SAS</th>
+                            <th style="width: 90px;">Nilai Total</th>
+                            <th style="width: 80px;">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentsTable">
+                        <tr>
+                            <td colspan="10" class="loading-state">
+                                <div class="spinner"></div>
+                                <div>Pilih kelas untuk menampilkan data siswa</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="save-all-section">
+                <button onclick="saveAllScores()" class="save-all-btn">
+                    💾 SIMPAN SEMUA NILAI
+                </button>
+                <p style="margin-top: 10px; font-size: 0.8rem; color: #6c757d;">
+                    Nilai akan disimpan ke database Firebase dan dapat diakses oleh Admin
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification" style="display: none;"></div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <script>
+        // ============================================
+        // KONFIGURASI FIREBASE
+        // ============================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyD_0hKhrz0vC7X_9KRrXiTOnRGI9Pi6tBI",
+            authDomain: "absensi-dan-penilaian-siswa.firebaseapp.com",
+            databaseURL: "https://absensi-dan-penilaian-siswa-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "absensi-dan-penilaian-siswa",
+            storageBucket: "absensi-dan-penilaian-siswa.firebasestorage.app",
+            messagingSenderId: "774655798848",
+            appId: "1:774655798848:web:d6ddb5a04d4acd91d1b9a5"
+        };
+
+        // Inisialisasi Firebase
+        let auth, database;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            database = firebase.database();
+            console.log("Firebase berhasil diinisialisasi");
+        } catch (error) {
+            console.error("Error inisialisasi Firebase:", error);
+            showNotification("Error koneksi database", "error");
+        }
+
+        // ============================================
+        // VARIABEL GLOBAL
+        // ============================================
+        let currentClass = '';
+        let currentSemester = 1;
+        let studentsData = {};
+        let userRole = '';
+        let userEmail = '';
+        let nilaiRef = null; // Reference untuk realtime listener
+
+        // ============================================
+        // INISIALISASI HALAMAN
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // Cek status login
+            auth.onAuthStateChanged((user) => {
+                if (user) {
+                    userEmail = user.email;
+                    userRole = detectRoleFromEmail(userEmail);
+                    console.log("User login:", userEmail, "Role:", userRole);
+                    
+                    document.getElementById('userName').textContent = userEmail;
+                    displayRoleInfo();
+                    loadClassesBasedOnRole();
+                    
+                    // Tampilkan status sinkronisasi
+                    document.getElementById('syncStatus').style.display = 'flex';
+                } else {
+                    window.location.href = 'index.html';
+                }
+            });
+
+            // Event listener untuk select kelas
+            document.getElementById('classSelect').addEventListener('change', function() {
+                if (nilaiRef) {
+                    nilaiRef.off(); // Hentikan listener sebelumnya
+                }
+                
+                currentClass = this.value;
+                if (currentClass) {
+                    document.getElementById('selectedClassText').textContent = `| Kelas ${currentClass}`;
+                    loadStudents();
+                    setupRealtimeListener(); // Setup realtime listener untuk nilai
+                }
+            });
+        });
+
+        // ============================================
+        // FUNGSI REALTIME LISTENER UNTUK NILAI
+        // ============================================
+        
+        // Setup realtime listener untuk nilai
+        function setupRealtimeListener() {
+            if (!currentClass) return;
+            
+            // Path untuk nilai: penilaian/{kelas}/{semester}
+            const path = `penilaian/${currentClass}/${currentSemester}`;
+            console.log("Setting up realtime listener for:", path);
+            
+            nilaiRef = database.ref(path);
+            
+            // Listen untuk perubahan data
+            nilaiRef.on('value', (snapshot) => {
+                if (snapshot.exists()) {
+                    const nilaiData = snapshot.val();
+                    console.log("Realtime update received:", nilaiData);
+                    
+                    // Update input fields dengan data terbaru
+                    updateInputsFromFirebase(nilaiData);
+                    showNotification("✅ Data diperbarui dari server", "success");
+                }
+            }, (error) => {
+                console.error("Realtime listener error:", error);
+            });
+        }
+
+        // Update input fields dari data Firebase
+        function updateInputsFromFirebase(nilaiData) {
+            Object.keys(nilaiData).forEach(studentId => {
+                const studentScores = nilaiData[studentId];
+                
+                // Update sumatif scores
+                for (let i = 1; i <= 4; i++) {
+                    const input = document.getElementById(`sumatif${i}-${studentId}`);
+                    if (input && studentScores[`sumatif${i}`] !== undefined) {
+                        input.value = studentScores[`sumatif${i}`];
+                    }
+                }
+                
+                // Update STS/SAS score
+                const scoreType = currentSemester === 1 ? 'sts' : 'sas';
+                const input = document.getElementById(`${scoreType}-${studentId}`);
+                if (input && studentScores[scoreType] !== undefined) {
+                    input.value = studentScores[scoreType];
+                }
+                
+                // Calculate total
+                calculateTotal(studentId);
+            });
+        }
+
+        // ============================================
+        // FUNGSI DETEKSI ROLE & KELAS
+        // ============================================
+
+        function detectRoleFromEmail(email) {
+            if (!email) return 'unknown';
+            if (email === 'admin@rbt.com') return 'admin';
+            if (email.includes('kelas')) return 'guru_kelas';
+            if (email.includes('pjok')) return 'guru_pjok';
+            return 'unknown';
+        }
+
+        function getClassesForUser(role, email) {
+            const classes = [];
+            
+            if (role === 'admin') return []; // Admin akses semua
+            
+            if (role === 'guru_kelas') {
+                const match = email.match(/kelas(\d+)([a-zA-Z])/i);
+                if (match) {
+                    const angka = match[1];
+                    const huruf = match[2].toUpperCase();
+                    classes.push(`${angka}${huruf}`);
+                }
+                return classes;
+            }
+            
+            if (role === 'guru_pjok') {
+                if (email === 'pjok1@rbt.com') {
+                    return generateClassRange(1, 2, 'A', 'E');
+                } else if (email === 'pjok2@rbt.com') {
+                    return generateClassRange(3, 4, 'A', 'F');
+                } else if (email === 'pjok3@rbt.com') {
+                    return generateClassRange(5, 6, 'A', 'E');
+                }
+            }
+            
+            return classes;
+        }
+
+        function generateClassRange(startGrade, endGrade, startLetter, endLetter) {
+            const classes = [];
+            for (let grade = startGrade; grade <= endGrade; grade++) {
+                let start = startLetter.charCodeAt(0);
+                let end = endLetter.charCodeAt(0);
+                
+                for (let letter = start; letter <= end; letter++) {
+                    if (grade === 1 && String.fromCharCode(letter) > 'D') continue;
+                    if (grade === 4 && String.fromCharCode(letter) > 'F') continue;
+                    if (grade !== 4 && String.fromCharCode(letter) > 'E') continue;
+                    
+                    classes.push(`${grade}${String.fromCharCode(letter)}`);
+                }
+            }
+            return classes;
+        }
+
+        function formatClassesDisplay(classes) {
+            if (classes.length === 0) return "Semua kelas";
+            if (classes.length === 1) return `Kelas ${classes[0]}`;
+            
+            const grouped = {};
+            classes.forEach(className => {
+                const grade = className.match(/^(\d+)/)[1];
+                const letter = className.match(/([A-Za-z])$/)[1];
+                
+                if (!grouped[grade]) grouped[grade] = [];
+                grouped[grade].push(letter);
+            });
+            
+            let result = '';
+            Object.keys(grouped).sort().forEach(grade => {
+                const letters = grouped[grade].sort();
+                if (letters.length > 1) {
+                    result += `${grade}${letters[0]}-${letters[letters.length-1]}, `;
+                } else {
+                    result += `${grade}${letters[0]}, `;
+                }
+            });
+            
+            return result.slice(0, -2);
+        }
+
+        function displayRoleInfo() {
+            const roleInfoDiv = document.getElementById('roleInfo');
+            const roleDisplaySpan = document.getElementById('roleDisplay');
+            const kelasAccessSpan = document.getElementById('kelasAccess');
+            
+            let roleText = '';
+            let accessText = '';
+            
+            switch(userRole) {
+                case 'admin':
+                    roleText = '👑 Administrator';
+                    accessText = 'Akses: Semua kelas';
+                    break;
+                case 'guru_kelas':
+                    roleText = '👨‍🏫 Guru Kelas';
+                    const kelas = getClassesForUser(userRole, userEmail)[0] || '-';
+                    accessText = `Kelas: ${kelas}`;
+                    break;
+                case 'guru_pjok':
+                    roleText = '🏃 Guru PJOK';
+                    const pjokClasses = getClassesForUser(userRole, userEmail);
+                    accessText = `Kelas: ${formatClassesDisplay(pjokClasses)}`;
+                    break;
+                default:
+                    roleText = 'Pengguna';
+                    accessText = 'Akses terbatas';
+            }
+            
+            roleDisplaySpan.textContent = roleText;
+            kelasAccessSpan.textContent = accessText;
+            roleInfoDiv.style.display = 'block';
+            
+            if (userRole === 'admin') {
+                document.getElementById('adminControls').style.display = 'flex';
+                document.getElementById('nonAdminControls').style.display = 'none';
+            } else {
+                document.getElementById('adminControls').style.display = 'none';
+                document.getElementById('nonAdminControls').style.display = 'block';
+            }
+        }
+
+        function loadClassesBasedOnRole() {
+            if (userRole === 'admin') {
+                detectClasses();
+            } else {
+                loadMyClasses();
+            }
+        }
+
+        function loadMyClasses() {
+            console.log("Loading classes for:", userEmail, "Role:", userRole);
+            
+            const myClasses = getClassesForUser(userRole, userEmail);
+            console.log("My classes:", myClasses);
+            
+            if (myClasses.length === 0) {
+                showNotification("Tidak ada kelas yang ditugaskan untuk akun ini", "error");
+                return;
+            }
+            
+            updateClassDropdown(myClasses);
+            
+            if (myClasses.length === 1) {
+                const classSelect = document.getElementById('classSelect');
+                classSelect.value = myClasses[0];
+                currentClass = myClasses[0];
+                document.getElementById('selectedClassText').textContent = `| Kelas ${currentClass}`;
+                loadStudents();
+                setupRealtimeListener();
+            }
+            
+            showNotification(`✅ ${myClasses.length} kelas ditampilkan sesuai penugasan`, "success");
+        }
+
+        // ============================================
+        // FUNGSI UTAMA
+        // ============================================
+
+        function detectClasses() {
+            if (userRole !== 'admin') {
+                showNotification("Fitur ini hanya untuk admin", "error");
+                return;
+            }
+            
+            console.log("🔍 Memulai auto-detect kelas...");
+            showNotification("🔍 Mendeteksi struktur data...", "info");
+            
+            const classSelect = document.getElementById('classSelect');
+            classSelect.innerHTML = '<option value="">-- Pilih Kelas --</option>';
+            
+            const pathsToCheck = ['students', 'kelas', 'siswa'];
+            let detectedClasses = [];
+            
+            function checkPath(pathIndex) {
+                if (pathIndex >= pathsToCheck.length) {
+                    if (detectedClasses.length === 0) {
+                        showNotification("❌ Tidak ditemukan data kelas.", "error");
+                        showError('Tidak ada data kelas ditemukan.');
+                    } else {
+                        updateClassDropdown(detectedClasses);
+                        showNotification(`✅ ${detectedClasses.length} kelas ditemukan`, "success");
+                    }
+                    return;
+                }
+                
+                const path = pathsToCheck[pathIndex];
+                console.log(`Mengecek path: ${path}`);
+                
+                database.ref(path).once('value')
+                    .then((snapshot) => {
+                        if (snapshot.exists()) {
+                            const data = snapshot.val();
+                            console.log(`Data ditemukan di path ${path}:`, data);
+                            
+                            const classesFromPath = analyzeDataStructure(data, path);
+                            detectedClasses = [...new Set([...detectedClasses, ...classesFromPath])].sort();
+                            console.log(`Kelas dari ${path}:`, classesFromPath);
+                        }
+                        checkPath(pathIndex + 1);
+                    })
+                    .catch((error) => {
+                        console.log(`Path ${path} tidak ada atau error:`, error);
+                        checkPath(pathIndex + 1);
+                    });
+            }
+            
+            checkPath(0);
+        }
+
+        function analyzeDataStructure(data, path) {
+            const classes = [];
+            
+            if (typeof data === 'object' && data !== null) {
+                Object.keys(data).forEach(key => {
+                    if (isValidClassName(key)) {
+                        classes.push(key);
+                    }
+                    
+                    const item = data[key];
+                    if (item && typeof item === 'object') {
+                        if (item.kelas || item.class) {
+                            const className = item.kelas || item.class;
+                            if (isValidClassName(className) && !classes.includes(className)) {
+                                classes.push(className);
+                            }
+                        }
+                    }
+                });
+            }
+            
+            return classes;
+        }
+
+        function isValidClassName(className) {
+            if (!className || typeof className !== 'string') return false;
+            const classRegex = /^[0-9]+[A-Za-z]$/;
+            return classRegex.test(className.trim());
+        }
+
+        function updateClassDropdown(classes) {
+            const classSelect = document.getElementById('classSelect');
+            
+            while (classSelect.options.length > 1) {
+                classSelect.remove(1);
+            }
+            
+            classes.forEach(className => {
+                if (userRole !== 'admin') {
+                    const myClasses = getClassesForUser(userRole, userEmail);
+                    if (!myClasses.includes(className)) {
+                        return;
+                    }
+                }
+                
+                const option = document.createElement('option');
+                option.value = className;
+                option.textContent = `Kelas ${className}`;
+                classSelect.appendChild(option);
+            });
+            
+            if (classes.length > 0 && classSelect.options.length > 1) {
+                classSelect.value = classes[0];
+                currentClass = classes[0];
+                document.getElementById('selectedClassText').textContent = `| Kelas ${currentClass}`;
+                loadStudents();
+                setupRealtimeListener();
+            }
+        }
+
+        function setSemester(semester) {
+            currentSemester = semester;
+            
+            document.getElementById('semester1').classList.remove('active');
+            document.getElementById('semester2').classList.remove('active');
+            document.getElementById(`semester${semester}`).classList.add('active');
+            
+            document.getElementById('assessmentTitle').innerHTML = `
+                Penilaian Semester ${semester}
+                <span style="font-size: 0.8rem; color: #3498db; font-weight: normal;">
+                    | Kelas ${currentClass || ''}
+                </span>
+            `;
+            
+            const stsHeader = document.getElementById('stsHeader');
+            const sasHeader = document.getElementById('sasHeader');
+            
+            if (semester === 1) {
+                stsHeader.style.display = 'table-cell';
+                sasHeader.style.display = 'none';
+            } else {
+                stsHeader.style.display = 'none';
+                sasHeader.style.display = 'table-cell';
+            }
+            
+            if (currentClass) {
+                loadStudents();
+                setupRealtimeListener();
+            }
+        }
+
+        function loadStudents() {
+            if (!currentClass) {
+                showError('Pilih kelas terlebih dahulu!');
+                return;
+            }
+
+            if (userRole !== 'admin') {
+                const allowedClasses = getClassesForUser(userRole, userEmail);
+                if (!allowedClasses.includes(currentClass)) {
+                    showError(`Anda tidak memiliki akses ke kelas ${currentClass}!`);
+                    return;
+                }
+            }
+
+            console.log("Loading students for class:", currentClass);
+            
+            const studentsTable = document.getElementById('studentsTable');
+            studentsTable.innerHTML = `
+                <tr>
+                    <td colspan="10" class="loading-state">
+                        <div class="spinner"></div>
+                        <div>Memuat data siswa...</div>
+                    </td>
+                </tr>
+            `;
+            
+            document.getElementById('errorMessage').style.display = 'none';
+
+            const possiblePaths = [
+                `students/${currentClass}`,
+                `siswa/${currentClass}`,
+                `kelas/${currentClass}/siswa`
+            ];
+
+            function tryPath(index) {
+                if (index >= possiblePaths.length) {
+                    studentsTable.innerHTML = `
+                        <tr>
+                            <td colspan="10" class="empty-state">
+                                <div>❌ Tidak ditemukan data siswa untuk kelas ${currentClass}</div>
+                                <div style="margin-top: 10px; font-size: 0.8rem;">
+                                    ${userRole === 'admin' ? 'Data siswa tidak ditemukan.' : 'Silakan hubungi admin untuk membuat data siswa.'}
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                const path = possiblePaths[index];
+                console.log(`Mencoba path: ${path}`);
+
+                database.ref(path).once('value')
+                    .then((snapshot) => {
+                        if (snapshot.exists()) {
+                            studentsData = snapshot.val();
+                            console.log(`✅ Data ditemukan di path: ${path}`, studentsData);
+                            renderStudentsTable(studentsData);
+                            loadExistingScores(); // Load nilai yang sudah ada
+                        } else {
+                            tryPath(index + 1);
+                        }
+                    })
+                    .catch((error) => {
+                        console.log(`Path ${path} gagal:`, error);
+                        tryPath(index + 1);
+                    });
+            }
+
+            tryPath(0);
+        }
+
+        function renderStudentsTable(students) {
+            const studentsTable = document.getElementById('studentsTable');
+            studentsTable.innerHTML = '';
+
+            if (!students || Object.keys(students).length === 0) {
+                studentsTable.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="empty-state">
+                            Tidak ada data siswa di kelas ini
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let index = 1;
+            Object.keys(students).forEach(studentId => {
+                const student = students[studentId];
+                
+                const row = document.createElement('tr');
+                row.id = `row-${studentId}`;
+                
+                let sumatifInputs = '';
+                for (let i = 1; i <= 4; i++) {
+                    sumatifInputs += `
+                        <td>
+                            <input type="number" min="0" max="100" step="0.1"
+                                   class="score-input" 
+                                   id="sumatif${i}-${studentId}"
+                                   placeholder="0"
+                                   oninput="validateScore(this)"
+                                   onchange="calculateTotal('${studentId}'); autoSaveDebounced('${studentId}')">
+                        </td>
+                    `;
+                }
+                
+                const stsSasInput = currentSemester === 1 ? `
+                    <td>
+                        <input type="number" min="0" max="100" step="0.1"
+                               class="score-input" 
+                               id="sts-${studentId}"
+                               placeholder="0"
+                               oninput="validateScore(this)"
+                               onchange="calculateTotal('${studentId}'); autoSaveDebounced('${studentId}')">
+                    </td>
+                    <td id="sas-cell-${studentId}" style="display: none;"></td>
+                ` : `
+                    <td id="sts-cell-${studentId}" style="display: none;"></td>
+                    <td>
+                        <input type="number" min="0" max="100" step="0.1"
+                               class="score-input" 
+                               id="sas-${studentId}"
+                               placeholder="0"
+                               oninput="validateScore(this)"
+                               onchange="calculateTotal('${studentId}'); autoSaveDebounced('${studentId}')">
+                    </td>
+                `;
+                
+                const studentName = student.nama || student.name || 'Nama tidak tersedia';
+                
+                row.innerHTML = `
+                    <td>${index++}</td>
+                    <td class="student-name-cell" style="font-weight: 500;">
+                        ${studentName}
+                        <br>
+                        <span class="student-id-badge">ID: ${studentId}</span>
+                    </td>
+                    ${sumatifInputs}
+                    ${stsSasInput}
+                    <td id="total-${studentId}" class="total-score-cell">-</td>
+                    <td>
+                        <button onclick="saveScores('${studentId}')" class="save-btn" id="save-btn-${studentId}">Simpan</button>
+                    </td>
+                `;
+                
+                studentsTable.appendChild(row);
+            });
+        }
+
+        function loadExistingScores() {
+            if (!currentClass) return;
+
+            console.log("Loading existing scores for:", currentClass, "semester:", currentSemester);
+            
+            const scorePaths = [
+                `penilaian/${currentClass}/${currentSemester}`,
+                `nilai/${currentClass}/${currentSemester}`,
+                `scores/${currentClass}/${currentSemester}`
+            ];
+
+            function tryScorePath(index) {
+                if (index >= scorePaths.length) {
+                    console.log("No existing scores found in any path");
+                    return;
+                }
+
+                const path = scorePaths[index];
+                console.log(`Mencari nilai di path: ${path}`);
+
+                database.ref(path).once('value')
+                    .then((snapshot) => {
+                        if (snapshot.exists()) {
+                            const scores = snapshot.val();
+                            console.log(`✅ Nilai ditemukan di ${path}:`, scores);
+                            
+                            Object.keys(scores).forEach(studentId => {
+                                const studentScores = scores[studentId];
+                                
+                                for (let i = 1; i <= 4; i++) {
+                                    const input = document.getElementById(`sumatif${i}-${studentId}`);
+                                    if (input && studentScores[`sumatif${i}`] !== undefined) {
+                                        input.value = studentScores[`sumatif${i}`];
+                                    }
+                                }
+                                
+                                const scoreType = currentSemester === 1 ? 'sts' : 'sas';
+                                const input = document.getElementById(`${scoreType}-${studentId}`);
+                                if (input && studentScores[scoreType] !== undefined) {
+                                    input.value = studentScores[scoreType];
+                                }
+                                
+                                calculateTotal(studentId);
+                            });
+                            showNotification("✅ Nilai sebelumnya berhasil dimuat", "success");
+                        } else {
+                            tryScorePath(index + 1);
+                        }
+                    })
+                    .catch((error) => {
+                        console.log(`Path ${path} gagal:`, error);
+                        tryScorePath(index + 1);
+                    });
+            }
+
+            tryScorePath(0);
+        }
+
+        function validateScore(input) {
+            const value = parseFloat(input.value);
+            if (isNaN(value)) {
+                input.value = '';
+                return;
+            }
+            
+            if (value < 0) input.value = 0;
+            if (value > 100) input.value = 100;
+            
+            const studentId = input.id.split('-')[1];
+            if (studentId) {
+                calculateTotal(studentId);
+            }
+        }
+
+        function calculateTotal(studentId) {
+            let sumatifTotal = 0;
+            let sumatifCount = 0;
+            
+            for (let i = 1; i <= 4; i++) {
+                const input = document.getElementById(`sumatif${i}-${studentId}`);
+                if (input && input.value !== '' && input.value !== '0') {
+                    const value = parseFloat(input.value);
+                    if (!isNaN(value)) {
+                        sumatifTotal += value;
+                        sumatifCount++;
+                    }
+                }
+            }
+            
+            const scoreType = currentSemester === 1 ? 'sts' : 'sas';
+            const stsSasInput = document.getElementById(`${scoreType}-${studentId}`);
+            let stsSasScore = 0;
+            if (stsSasInput && stsSasInput.value !== '' && stsSasInput.value !== '0') {
+                const value = parseFloat(stsSasInput.value);
+                if (!isNaN(value)) {
+                    stsSasScore = value;
+                }
+            }
+            
+            let totalScore = 0;
+            
+            if (sumatifCount > 0) {
+                const averageSumatif = sumatifTotal / sumatifCount;
+                const sumatifComponent = averageSumatif * 0.65;
+                const stsSasComponent = stsSasScore * 0.35;
+                
+                totalScore = sumatifComponent + stsSasComponent;
+            }
+            
+            const totalCell = document.getElementById(`total-${studentId}`);
+            if (totalCell) {
+                if (totalScore > 0) {
+                    totalCell.textContent = totalScore.toFixed(1);
+                    
+                    if (totalScore >= 85) {
+                        totalCell.style.color = '#28a745';
+                        totalCell.title = 'Baik';
+                    } else if (totalScore >= 70) {
+                        totalCell.style.color = '#ffc107';
+                        totalCell.title = 'Cukup';
+                    } else {
+                        totalCell.style.color = '#dc3545';
+                        totalCell.title = 'Kurang';
+                    }
+                } else {
+                    totalCell.textContent = '-';
+                    totalCell.style.color = '#6c757d';
+                    totalCell.title = 'Belum dinilai';
+                }
+            }
+        }
+
+        // ============================================
+        // AUTO-SAVE FUNGSI (DEBOUNCED)
+        // ============================================
+        
+        // Debounce untuk auto-save
+        const autoSaveDebounced = (function() {
+            let timeoutId;
+            return function(studentId) {
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => {
+                    autoSaveScores(studentId);
+                }, 2000); // Auto-save setelah 2 detik tidak ada perubahan
+            };
+        })();
+
+        // Auto-save otomatis
+        function autoSaveScores(studentId) {
+            if (!currentClass) return;
+
+            const scores = {};
+            let hasData = false;
+            
+            for (let i = 1; i <= 4; i++) {
+                const input = document.getElementById(`sumatif${i}-${studentId}`);
+                if (input && input.value !== '') {
+                    const value = parseFloat(input.value);
+                    if (!isNaN(value)) {
+                        scores[`sumatif${i}`] = value;
+                        hasData = true;
+                    }
+                }
+            }
+            
+            const scoreType = currentSemester === 1 ? 'sts' : 'sas';
+            const stsSasInput = document.getElementById(`${scoreType}-${studentId}`);
+            if (stsSasInput && stsSasInput.value !== '') {
+                const value = parseFloat(stsSasInput.value);
+                if (!isNaN(value)) {
+                    scores[scoreType] = value;
+                    hasData = true;
+                }
+            }
+            
+            calculateTotal(studentId);
+            const totalCell = document.getElementById(`total-${studentId}`);
+            if (totalCell && totalCell.textContent !== '-') {
+                scores.nilai_total = parseFloat(totalCell.textContent);
+            }
+            
+            if (!hasData) return;
+            
+            scores.updatedAt = new Date().toISOString();
+            scores.teacher = auth.currentUser?.email || 'guru';
+            scores.semester = currentSemester;
+            scores.kelas = currentClass;
+            scores.studentId = studentId;
+            scores.studentName = studentsData[studentId]?.nama || studentsData[studentId]?.name || studentId;
+            
+            const saveBtn = document.getElementById(`save-btn-${studentId}`);
+            saveBtn.textContent = '...';
+            saveBtn.disabled = true;
+            
+            database.ref(`penilaian/${currentClass}/${currentSemester}/${studentId}`).set(scores)
+                .then(() => {
+                    saveBtn.textContent = '✓';
+                    saveBtn.style.background = '#28a745';
+                    
+                    setTimeout(() => {
+                        saveBtn.textContent = 'Simpan';
+                        saveBtn.style.background = '';
+                        saveBtn.disabled = false;
+                    }, 1000);
+                })
+                .catch((error) => {
+                    console.error('Error auto-saving scores:', error);
+                    saveBtn.textContent = '✗';
+                    saveBtn.style.background = '#dc3545';
+                    
+                    setTimeout(() => {
+                        saveBtn.textContent = 'Simpan';
+                        saveBtn.style.background = '';
+                        saveBtn.disabled = false;
+                    }, 2000);
+                });
+        }
+
+        function saveScores(studentId) {
+            if (!currentClass) {
+                showNotification('Pilih kelas terlebih dahulu!', 'error');
+                return;
+            }
+
+            if (userRole !== 'admin') {
+                const allowedClasses = getClassesForUser(userRole, userEmail);
+                if (!allowedClasses.includes(currentClass)) {
+                    showNotification(`Anda tidak memiliki akses ke kelas ${currentClass}!`, 'error');
+                    return;
+                }
+            }
+
+            const scores = {};
+            let hasData = false;
+            
+            for (let i = 1; i <= 4; i++) {
+                const input = document.getElementById(`sumatif${i}-${studentId}`);
+                if (input && input.value !== '') {
+                    const value = parseFloat(input.value);
+                    if (!isNaN(value)) {
+                        scores[`sumatif${i}`] = value;
+                        hasData = true;
+                    }
+                }
+            }
+            
+            const scoreType = currentSemester === 1 ? 'sts' : 'sas';
+            const stsSasInput = document.getElementById(`${scoreType}-${studentId}`);
+            if (stsSasInput && stsSasInput.value !== '') {
+                const value = parseFloat(stsSasInput.value);
+                if (!isNaN(value)) {
+                    scores[scoreType] = value;
+                    hasData = true;
+                }
+            }
+            
+            calculateTotal(studentId);
+            const totalCell = document.getElementById(`total-${studentId}`);
+            if (totalCell && totalCell.textContent !== '-') {
+                scores.nilai_total = parseFloat(totalCell.textContent);
+            }
+            
+            if (!hasData) {
+                showNotification('Tidak ada data nilai yang akan disimpan!', 'error');
+                return;
+            }
+            
+            scores.updatedAt = new Date().toISOString();
+            scores.teacher = auth.currentUser?.email || 'guru';
+            scores.semester = currentSemester;
+            scores.kelas = currentClass;
+            scores.studentId = studentId;
+            scores.studentName = studentsData[studentId]?.nama || studentsData[studentId]?.name || studentId;
+            
+            const saveBtn = document.getElementById(`save-btn-${studentId}`);
+            const originalText = saveBtn.textContent;
+            saveBtn.textContent = '...';
+            saveBtn.disabled = true;
+            
+            console.log("Saving scores for", studentId, ":", scores);
+            
+            // Simpan ke path utama: penilaian/{kelas}/{semester}/{studentId}
+            database.ref(`penilaian/${currentClass}/${currentSemester}/${studentId}`).set(scores)
+                .then(() => {
+                    saveBtn.textContent = '✓';
+                    saveBtn.style.background = '#28a745';
+                    const studentName = scores.studentName;
+                    showNotification(`✅ Nilai ${studentName} berhasil disimpan!`, 'success');
+                    
+                    // Juga simpan ke backup path untuk admin
+                    database.ref(`nilai_backup/${currentClass}/${currentSemester}/${studentId}`).set(scores);
+                    
+                    setTimeout(() => {
+                        saveBtn.textContent = 'Simpan';
+                        saveBtn.style.background = '';
+                        saveBtn.disabled = false;
+                    }, 2000);
+                })
+                .catch((error) => {
+                    console.error('Error saving scores:', error);
+                    saveBtn.textContent = '✗';
+                    saveBtn.style.background = '#dc3545';
+                    showNotification('❌ Gagal menyimpan nilai', 'error');
+                    
+                    setTimeout(() => {
+                        saveBtn.textContent = originalText;
+                        saveBtn.style.background = '';
+                        saveBtn.disabled = false;
+                    }, 2000);
+                });
+        }
+
+        function saveAllScores() {
+            if (!currentClass) {
+                showNotification('Pilih kelas terlebih dahulu!', 'error');
+                return;
+            }
+
+            if (userRole !== 'admin') {
+                const allowedClasses = getClassesForUser(userRole, userEmail);
+                if (!allowedClasses.includes(currentClass)) {
+                    showNotification(`Anda tidak memiliki akses ke kelas ${currentClass}!`, 'error');
+                    return;
+                }
+            }
+
+            const studentIds = Object.keys(studentsData);
+            if (studentIds.length === 0) {
+                showNotification('Tidak ada data siswa!', 'error');
+                return;
+            }
+
+            let savedCount = 0;
+            let totalCount = studentIds.length;
+            let hasAnyData = false;
+            
+            showNotification(`⏳ Menyimpan 0/${totalCount} nilai...`, 'info');
+            
+            studentIds.forEach((studentId, index) => {
+                const scores = {};
+                let hasData = false;
+                
+                for (let i = 1; i <= 4; i++) {
+                    const input = document.getElementById(`sumatif${i}-${studentId}`);
+                    if (input && input.value !== '') {
+                        const value = parseFloat(input.value);
+                        if (!isNaN(value)) {
+                            scores[`sumatif${i}`] = value;
+                            hasData = true;
+                            hasAnyData = true;
+                        }
+                    }
+                }
+                
+                const scoreType = currentSemester === 1 ? 'sts' : 'sas';
+                const stsSasInput = document.getElementById(`${scoreType}-${studentId}`);
+                if (stsSasInput && stsSasInput.value !== '') {
+                    const value = parseFloat(stsSasInput.value);
+                    if (!isNaN(value)) {
+                        scores[scoreType] = value;
+                        hasData = true;
+                        hasAnyData = true;
+                    }
+                }
+                
+                calculateTotal(studentId);
+                const totalCell = document.getElementById(`total-${studentId}`);
+                if (totalCell && totalCell.textContent !== '-') {
+                    scores.nilai_total = parseFloat(totalCell.textContent);
+                }
+                
+                if (hasData) {
+                    scores.updatedAt = new Date().toISOString();
+                    scores.teacher = auth.currentUser?.email || 'guru';
+                    scores.semester = currentSemester;
+                    scores.kelas = currentClass;
+                    scores.studentId = studentId;
+                    scores.studentName = studentsData[studentId]?.nama || studentsData[studentId]?.name || studentId;
+                    
+                    setTimeout(() => {
+                        // Simpan ke dua tempat: utama dan backup
+                        const savePromises = [
+                            database.ref(`penilaian/${currentClass}/${currentSemester}/${studentId}`).set(scores),
+                            database.ref(`nilai_backup/${currentClass}/${currentSemester}/${studentId}`).set(scores)
+                        ];
+                        
+                        Promise.all(savePromises)
+                            .then(() => {
+                                savedCount++;
+                                const saveBtn = document.getElementById(`save-btn-${studentId}`);
+                                if (saveBtn) {
+                                    saveBtn.textContent = '✓';
+                                    saveBtn.style.background = '#28a745';
+                                    setTimeout(() => {
+                                        saveBtn.textContent = 'Simpan';
+                                        saveBtn.style.background = '';
+                                    }, 3000);
+                                }
+                                
+                                if (savedCount === totalCount) {
+                                    showNotification(`✅ ${savedCount} nilai berhasil disimpan!`, 'success');
+                                } else {
+                                    document.getElementById('notification').textContent = `⏳ Menyimpan ${savedCount}/${totalCount}...`;
+                                }
+                            })
+                            .catch((error) => {
+                                console.error('Error saving scores:', error);
+                                savedCount++;
+                                const saveBtn = document.getElementById(`save-btn-${studentId}`);
+                                if (saveBtn) {
+                                    saveBtn.textContent = '✗';
+                                    saveBtn.style.background = '#dc3545';
+                                    setTimeout(() => {
+                                        saveBtn.textContent = 'Simpan';
+                                        saveBtn.style.background = '';
+                                    }, 3000);
+                                }
+                                
+                                if (savedCount === totalCount) {
+                                    showNotification(`⚠️ ${savedCount} siswa diproses (beberapa mungkin gagal)`, 'warning');
+                                }
+                            });
+                    }, index * 300);
+                } else {
+                    savedCount++;
+                    if (savedCount === totalCount && !hasAnyData) {
+                        showNotification(`ℹ️ Tidak ada data nilai untuk disimpan`, 'info');
+                    }
+                }
+            });
+        }
+
+        // ============================================
+        // FUNGSI HELPER
+        // ============================================
+
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function goBack() {
+            window.location.href = 'dashboard.html';
+        }
+
+        // ============================================
+        // EXPOSE FUNGSI KE GLOBAL
+        // ============================================
+        window.setSemester = setSemester;
+        window.loadStudents = loadStudents;
+        window.validateScore = validateScore;
+        window.calculateTotal = calculateTotal;
+        window.saveScores = saveScores;
+        window.saveAllScores = saveAllScores;
+        window.goBack = goBack;
+        window.detectClasses = detectClasses;
+        window.loadMyClasses = loadMyClasses;
+        window.autoSaveDebounced = autoSaveDebounced;
+    </script>
+</body>
+</html>
