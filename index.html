@@ -320,20 +320,33 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     
     <script>
-        // Firebase Configuration
+        // FIREBASE CONFIGURATION - DIPERBAIKI DAN DISERAGAMKAN
         const firebaseConfig = {
             apiKey: "AIzaSyD_0hKhrz0vC7X_9KRrXiTOnRGI9Pi6tBI",
-            authDomain: "absensi-dan-penilaian-siswa.firebasestorage.app",
+            authDomain: "absensi-dan-penilaian-siswa.firebaseapp.com", // DIPERBAIKI: dari .firebasestorage.app ke .firebaseapp.com
             databaseURL: "https://absensi-dan-penilaian-siswa-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "absensi-dan-penilaian-siswa",
-            storageBucket: "absensi-dan-penilaian-siswa.firebasestorage.app",
+            storageBucket: "absensi-dan-penilaian-siswa.appspot.com", // DIPERBAIKI: dari .firebasestorage.app ke .appspot.com
             messagingSenderId: "774655798848",
             appId: "1:774655798848:web:d6ddb5a04d4acd91d1b9a5"
         };
 
         // Initialize Firebase
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
+        let firebaseInitialized = false;
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+                firebaseInitialized = true;
+                console.log("✅ Firebase berhasil diinisialisasi di index.html");
+            } else {
+                firebase.app(); // Gunakan yang sudah ada
+                firebaseInitialized = true;
+                console.log("✅ Firebase sudah diinisialisasi sebelumnya");
+            }
+        } catch (error) {
+            console.error("❌ Gagal menginisialisasi Firebase di index.html:", error);
+            document.getElementById('errorMessage').innerHTML = `❌ Gagal menghubungkan ke server: ${error.message}`;
+            document.getElementById('errorMessage').style.display = 'block';
         }
         
         const auth = firebase.auth();
@@ -415,6 +428,11 @@
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
+            if (!firebaseInitialized) {
+                showError('Sistem belum siap. Silakan refresh halaman.');
+                return;
+            }
+            
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             
@@ -455,7 +473,7 @@
                     
                     // Redirect to dashboard after 1 second
                     setTimeout(() => {
-                        window.location.href = 'dashboard.html';
+                        window.location.href = 'dashboard.html?v=' + new Date().getTime();
                     }, 1000);
                 })
                 .catch((error) => {
@@ -475,6 +493,9 @@
                         case 'auth/too-many-requests':
                             errorMessage = 'Terlalu banyak percobaan. Coba lagi nanti';
                             break;
+                        case 'auth/network-request-failed':
+                            errorMessage = 'Koneksi internet bermasalah. Periksa jaringan Anda';
+                            break;
                         default:
                             errorMessage = `Error: ${error.message}`;
                     }
@@ -486,20 +507,25 @@
         // Check if user is already logged in
         auth.onAuthStateChanged((user) => {
             if (user) {
+                console.log("✅ User sudah login, redirect ke dashboard...");
                 // User is already logged in, redirect to dashboard
-                window.location.href = 'dashboard.html';
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html?v=' + new Date().getTime();
+                }, 500);
             }
         });
 
         // Pre-fill for testing
         document.addEventListener('DOMContentLoaded', function() {
+            console.log("🔄 Login page loaded");
+            
             // Auto-fill demo account on click
             const demoAccounts = {
-                'kelas1a': ['kelas1a@rbt.com', '123456'],
-                'kelas5b': ['kelas5b@rbt.com', '123456'],
-                'pjok1': ['pjok1@rbt.com', '123456'],
-                'pjok3': ['pjok3@rbt.com', '123456'],
-                'admin': ['admin@rbt.com', '123456']
+                'kelas1a': ['kelas1a@rbt.com', 'password123'],
+                'kelas5b': ['kelas5b@rbt.com', 'password123'],
+                'pjok1': ['pjok1@rbt.com', 'password123'],
+                'pjok3': ['pjok3@rbt.com', 'password123'],
+                'admin': ['admin@rbt.com', 'admin123']
             };
             
             // Get demo from URL parameter
@@ -508,7 +534,11 @@
             
             if (demo && demoAccounts[demo]) {
                 fillCredentials(demoAccounts[demo][0], demoAccounts[demo][1]);
-                document.getElementById('loginForm').submit();
+            }
+            
+            // Test Firebase connection
+            if (firebaseInitialized) {
+                console.log("✅ Firebase ready for login");
             }
         });
     </script>

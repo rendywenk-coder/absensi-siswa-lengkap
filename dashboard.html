@@ -1,16 +1,21 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <!-- CACHE CONTROL META TAGS -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
+    <!-- HAPUS META CACHE CONTROL YANG MENYEBABKAN MASALAH -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - SDN RAWABUNTU 03</title>
     <link rel="stylesheet" href="style.css?v=2">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- 🔥 FIREBASE SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
+    <!-- INCLUDE FIREBASE-APP.JS (SINGLE SOURCE OF TRUTH) -->
+    <script src="firebase-app.js?v=2"></script>
+    
     <style>
         /* Dashboard specific styles */
         .dashboard-header {
@@ -305,32 +310,113 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
         
-        /* Cache Control Button */
-        .cache-control {
+        /* KONEKSI NOTIFICATION SYSTEM - DIPERBAIKI */
+        .connection-notification {
             position: fixed;
-            bottom: 20px;
+            top: 80px;
             right: 20px;
-            z-index: 1000;
+            padding: 15px 25px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 500;
+            z-index: 9999;
+            animation: slideIn 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            max-width: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            transition: all 0.3s;
+            opacity: 1;
+            transform: translateX(0);
         }
         
-        .cache-btn {
-            background: #3498db;
-            color: white;
+        .connection-notification.hidden {
+            transform: translateX(150%);
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .connection-notification.error {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            border-left: 5px solid #ff7675;
+        }
+        
+        .connection-notification.success {
+            background: linear-gradient(135deg, #27ae60, #219a52);
+            border-left: 5px solid #2ecc71;
+        }
+        
+        .connection-notification.warning {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            border-left: 5px solid #f1c40f;
+        }
+        
+        .connection-notification.info {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            border-left: 5px solid #3498db;
+        }
+        
+        .connection-icon {
+            font-size: 1.5rem;
+            min-width: 30px;
+        }
+        
+        .connection-content {
+            flex: 1;
+        }
+        
+        .connection-content h4 {
+            margin: 0 0 5px 0;
+            font-size: 1rem;
+        }
+        
+        .connection-content p {
+            margin: 0;
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+        
+        .connection-close {
+            background: rgba(255, 255, 255, 0.2);
             border: none;
-            width: 50px;
-            height: 50px;
+            color: white;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
             transition: all 0.3s;
+            flex-shrink: 0;
         }
         
-        .cache-btn:hover {
-            background: #2980b9;
+        .connection-close:hover {
+            background: rgba(255, 255, 255, 0.3);
             transform: scale(1.1);
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Footer */
+        .dashboard-footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eef2f7;
+            color: #95a5a6;
+            font-size: 0.85rem;
         }
         
         /* Responsive */
@@ -349,9 +435,11 @@
                 gap: 15px;
             }
             
-            .cache-control {
-                bottom: 10px;
+            .connection-notification {
+                top: 70px;
                 right: 10px;
+                left: 10px;
+                max-width: none;
             }
         }
         
@@ -368,45 +456,23 @@
                 font-size: 1.2rem;
             }
         }
-        
-        /* Footer */
-        .dashboard-footer {
-            text-align: center;
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #eef2f7;
-            color: #95a5a6;
-            font-size: 0.85rem;
-        }
-        
-        /* Custom Cache Warning */
-        .cache-warning {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #f39c12;
-            color: white;
-            padding: 10px 15px;
-            border-radius: 8px;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-            z-index: 10000;
-            display: none;
-            animation: slideIn 0.3s ease;
-        }
-        
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateX(100%);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
     </style>
 </head>
 <body>
+    <!-- Connection Notification System -->
+    <div id="connectionNotification" class="connection-notification hidden">
+        <div class="connection-icon">
+            <i class="fas fa-wifi"></i>
+        </div>
+        <div class="connection-content">
+            <h4 id="connectionTitle">Koneksi Internet</h4>
+            <p id="connectionMessage">Memeriksa koneksi...</p>
+        </div>
+        <button class="connection-close" onclick="hideConnectionNotification()">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
     <!-- Navbar -->
     <div class="navbar">
         <div class="navbar-brand">
@@ -414,19 +480,14 @@
             <span style="font-size: 11px; color: #7f8c8d;"> | Dashboard</span>
         </div>
         <div class="navbar-user">
-            <span id="userName"></span>
-            <button onclick="clearCache()" class="btn btn-warning" style="padding: 6px 12px; font-size: 0.85rem; margin-right: 10px;">
+            <span id="userName">Memuat...</span>
+            <button onclick="refreshDashboard()" class="btn btn-warning" style="padding: 6px 12px; font-size: 0.85rem; margin-right: 10px;">
                 <i class="fas fa-sync-alt"></i> Refresh
             </button>
             <button onclick="logout()" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;">
                 <i class="fas fa-sign-out-alt"></i> Logout
             </button>
         </div>
-    </div>
-
-    <!-- Cache Warning -->
-    <div class="cache-warning" id="cacheWarning">
-        <i class="fas fa-exclamation-triangle"></i> Cache diperbarui. Halaman akan direfresh...
     </div>
 
     <!-- Main Content -->
@@ -544,57 +605,270 @@
         </div>
     </div>
 
-    <!-- Cache Control Button -->
-    <div class="cache-control">
-        <button class="cache-btn" onclick="clearCache()" title="Refresh Cache">
-            <i class="fas fa-redo"></i>
-        </button>
-    </div>
-
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    
     <script>
         // ============================================
-        // KONFIGURASI FIREBASE
+        // GLOBAL VARIABLES
         // ============================================
-        const firebaseConfig = {
-            apiKey: "AIzaSyD_0hKhrz0vC7X_9KRrXiTOnRGI9Pi6tBI",
-            authDomain: "absensi-dan-penilaian-siswa.firebaseapp.com",
-            databaseURL: "https://absensi-dan-penilaian-siswa-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "absensi-dan-penilaian-siswa",
-            storageBucket: "absensi-dan-penilaian-siswa.firebasestorage.app",
-            messagingSenderId: "774655798848",
-            appId: "1:774655798848:web:d6ddb5a04d4acd91d1b9a5"
-        };
-
-        // Inisialisasi Firebase
-        let auth, database;
-        try {
-            firebase.initializeApp(firebaseConfig);
-            auth = firebase.auth();
-            database = firebase.database();
-            console.log("Firebase berhasil diinisialisasi di dashboard");
-        } catch (error) {
-            console.error("Error inisialisasi Firebase:", error);
-        }
-
-        // ============================================
-        // VARIABEL GLOBAL
-        // ============================================
+        let currentUser = null;
+        let auth = null;
+        let database = null;
         let userRole = '';
         let userEmail = '';
         let userClasses = [];
-        let today = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
-        let appVersion = '2.0.0';
+        let today = new Date().toISOString().split('T')[0];
+        let isPageInitialized = false;
+        let realtimeUnsubscribe = null;
+        let lastConnectionStatus = null;
 
         // ============================================
-        // INISIALISASI HALAMAN
+        // CONNECTION SYSTEM FUNCTIONS
+        // ============================================
+        function showConnectionNotification(type, title, message, autoHide = true) {
+            const notification = document.getElementById('connectionNotification');
+            const titleElement = document.getElementById('connectionTitle');
+            const messageElement = document.getElementById('connectionMessage');
+            const icon = notification.querySelector('.connection-icon i');
+            
+            // Only show if status changed
+            if (type === 'success' && lastConnectionStatus === true) {
+                return; // Don't show success if already connected
+            }
+            
+            // Remove all classes
+            notification.className = 'connection-notification';
+            notification.classList.add(type);
+            
+            // Set content
+            titleElement.textContent = title;
+            messageElement.textContent = message;
+            
+            // Set icon based on type
+            switch(type) {
+                case 'error':
+                    icon.className = 'fas fa-wifi-slash';
+                    break;
+                case 'success':
+                    icon.className = 'fas fa-wifi';
+                    break;
+                case 'warning':
+                    icon.className = 'fas fa-exclamation-triangle';
+                    break;
+                case 'info':
+                    icon.className = 'fas fa-info-circle';
+                    break;
+            }
+            
+            // Show notification
+            notification.classList.remove('hidden');
+            
+            // Auto hide for success messages
+            if (autoHide && type === 'success') {
+                setTimeout(() => {
+                    notification.classList.add('hidden');
+                }, 3000);
+            }
+            
+            // Update last connection status
+            if (type === 'success') lastConnectionStatus = true;
+            if (type === 'error') lastConnectionStatus = false;
+        }
+
+        function hideConnectionNotification() {
+            const notification = document.getElementById('connectionNotification');
+            notification.classList.add('hidden');
+        }
+
+        async function checkConnection() {
+            try {
+                // Quick browser check first
+                if (!navigator.onLine) {
+                    if (lastConnectionStatus !== false) {
+                        showConnectionNotification(
+                            'error',
+                            'Anda Offline',
+                            'Browser Anda tidak terhubung ke internet',
+                            false
+                        );
+                        lastConnectionStatus = false;
+                    }
+                    return false;
+                }
+
+                // Check Firebase connection
+                if (!database) {
+                    if (lastConnectionStatus !== false) {
+                        showConnectionNotification(
+                            'error',
+                            'Database Error',
+                            'Database tidak tersedia',
+                            false
+                        );
+                        lastConnectionStatus = false;
+                    }
+                    return false;
+                }
+
+                let firebaseConnected = false;
+                
+                // Try to check Firebase connection
+                try {
+                    const connectedRef = database.ref('.info/connected');
+                    const snapshot = await new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => {
+                            connectedRef.off('value');
+                            resolve(false);
+                        }, 2000);
+                        
+                        connectedRef.on('value', (snap) => {
+                            clearTimeout(timeout);
+                            connectedRef.off('value');
+                            resolve(snap.val() === true);
+                        });
+                    });
+                    
+                    firebaseConnected = snapshot;
+                } catch (e) {
+                    console.log("Firebase connection check error:", e);
+                    firebaseConnected = false;
+                }
+
+                const isConnected = firebaseConnected;
+
+                // Only notify if status changed
+                if (isConnected !== lastConnectionStatus) {
+                    if (isConnected) {
+                        showConnectionNotification(
+                            'success',
+                            'Koneksi Normal',
+                            'Terhubung ke database dengan baik',
+                            true
+                        );
+                    } else {
+                        showConnectionNotification(
+                            'error',
+                            'Database Offline',
+                            'Tidak dapat terhubung ke database',
+                            false
+                        );
+                    }
+                    lastConnectionStatus = isConnected;
+                }
+
+                return isConnected;
+
+            } catch (error) {
+                console.error('Error checking connection:', error);
+                
+                if (lastConnectionStatus !== false) {
+                    showConnectionNotification(
+                        'error',
+                        'Kesalahan Sistem',
+                        'Gagal memeriksa koneksi',
+                        false
+                    );
+                    lastConnectionStatus = false;
+                }
+                
+                return false;
+            }
+        }
+
+        function startConnectionMonitoring() {
+            // Check immediately
+            checkConnection();
+            
+            // Check every 30 seconds
+            setInterval(() => {
+                checkConnection();
+            }, 30000);
+            
+            // Listen for online/offline events
+            window.addEventListener('online', () => {
+                console.log('Browser online, checking connection...');
+                checkConnection();
+            });
+            
+            window.addEventListener('offline', () => {
+                console.log('Browser offline');
+                showConnectionNotification('error', 'Anda Offline', 'Browser Anda tidak terhubung ke internet', false);
+                lastConnectionStatus = false;
+            });
+        }
+
+        // ============================================
+        // REALTIME UPDATES SYSTEM - DITAMBAHKAN
+        // ============================================
+        function setupRealtimeUpdates() {
+            console.log("🔄 Setting up realtime updates for dashboard...");
+            
+            // Clean up previous listeners
+            if (realtimeUnsubscribe) {
+                realtimeUnsubscribe();
+            }
+            
+            // Setup realtime stats updates jika ada
+            if (window.firebaseApp && window.firebaseApp.getRealtimeStats) {
+                realtimeUnsubscribe = window.firebaseApp.getRealtimeStats((stats) => {
+                    console.log("📊 Realtime stats updated:", stats);
+                    updateDashboardStats(stats);
+                });
+            }
+            
+            // Listen for Firebase connection changes
+            window.addEventListener('firebaseConnectionChange', (event) => {
+                const isConnected = event.detail.connected;
+                console.log("🔌 Firebase connection changed:", isConnected);
+                
+                if (isConnected) {
+                    showConnectionNotification('success', 'Database Online', 'Terhubung ke database realtime', true);
+                    // Refresh data when reconnected
+                    setTimeout(() => {
+                        loadDashboardStats();
+                        loadRecentActivities();
+                    }, 1000);
+                } else {
+                    showConnectionNotification('error', 'Database Offline', 'Tidak terhubung ke database', false);
+                }
+            });
+            
+            // Listen for data update events
+            window.addEventListener('studentsUpdated', () => {
+                console.log("👥 Students data updated event - refreshing stats");
+                loadDashboardStats();
+            });
+            
+            window.addEventListener('attendanceUpdated', () => {
+                console.log("📅 Attendance data updated event - refreshing stats");
+                loadDashboardStats();
+                loadRecentActivities();
+            });
+            
+            window.addEventListener('scoresUpdated', () => {
+                console.log("📊 Scores data updated event - refreshing stats");
+                loadDashboardStats();
+                loadRecentActivities();
+            });
+            
+            console.log("✅ Realtime updates setup complete");
+        }
+
+        function updateDashboardStats(stats) {
+            document.getElementById('totalSiswa').textContent = stats.totalStudents || 0;
+            document.getElementById('absensiHariIni').textContent = stats.attendanceRate || 0;
+            document.getElementById('rataRataNilai').textContent = stats.averageScore || 0;
+            
+            // Hitung nilai masuk dari stats yang tersedia
+            if (stats.totalStudents && stats.attendanceRate) {
+                const nilaiMasuk = Math.floor((stats.totalStudents * stats.attendanceRate) / 100);
+                document.getElementById('nilaiMasuk').textContent = nilaiMasuk;
+            }
+        }
+
+        // ============================================
+        // INITIALIZATION
         // ============================================
         document.addEventListener('DOMContentLoaded', function() {
-            console.log("🔄 Dashboard initializing...");
+            console.log("🚀 Dashboard initializing...");
             
             // Set last updated time
             document.getElementById('lastUpdated').textContent = new Date().toLocaleDateString('id-ID', {
@@ -605,87 +879,136 @@
                 minute: '2-digit'
             });
             
-            // Check cache version
-            checkCacheVersion();
-            
-            // Cek status login
-            auth.onAuthStateChanged((user) => {
-                if (user) {
-                    userEmail = user.email;
-                    userRole = detectRoleFromEmail(userEmail);
-                    console.log("Dashboard: User login:", userEmail, "Role:", userRole);
-                    
-                    document.getElementById('userName').textContent = user.email;
-                    updateUserInfo();
-                    loadUserClasses();
-                    loadDashboardStats();
-                    loadRecentActivities();
-                    
-                    // Check if admin and show admin access
-                    checkAdminAccess();
-                    
-                    // Save login timestamp
-                    localStorage.setItem('lastLogin', new Date().getTime());
-                } else {
-                    console.log("User not logged in, redirecting to login...");
-                    window.location.href = 'index.html?v=' + new Date().getTime();
-                }
-            });
-            
-            // Auto refresh cache every 5 minutes
-            setInterval(checkCacheVersion, 300000);
+            // Initialize with delay to ensure Firebase is loaded
+            setTimeout(initializeDashboardSystem, 1000);
         });
 
-        // ============================================
-        // CACHE CONTROL FUNCTIONS
-        // ============================================
-        function checkCacheVersion() {
-            const cachedVersion = localStorage.getItem('appVersion');
-            const cacheTimestamp = localStorage.getItem('cacheTimestamp');
-            const currentTime = new Date().getTime();
-            
-            // If no cache version or version mismatch
-            if (!cachedVersion || cachedVersion !== appVersion) {
-                console.log("🔄 Cache version mismatch, clearing cache...");
-                clearCache();
+        async function initializeDashboardSystem() {
+            if (isPageInitialized) {
+                console.log("⚠️ Dashboard already initialized");
                 return;
             }
             
-            // If cache older than 30 minutes
-            if (cacheTimestamp && (currentTime - parseInt(cacheTimestamp)) > 1800000) {
-                console.log("🔄 Cache expired (30 mins), refreshing...");
-                showCacheWarning();
-                setTimeout(clearCache, 2000);
+            try {
+                console.log("🔥 Initializing dashboard system...");
+                
+                // Check if Firebase is available
+                if (typeof firebase === 'undefined') {
+                    console.error("❌ Firebase not loaded");
+                    showConnectionNotification('error', 'Firebase Error', 'Firebase SDK tidak dimuat', false);
+                    return;
+                }
+                
+                // Use firebase-app.js if available
+                if (window.firebaseApp && window.firebaseApp.isInitialized) {
+                    console.log("✅ Using firebase-app.js");
+                    auth = window.firebaseApp.getAuth();
+                    database = window.firebaseApp.getDatabase();
+                } else {
+                    console.log("⚠️ Initializing Firebase directly");
+                    // Initialize Firebase
+                    const firebaseConfig = {
+                        apiKey: "AIzaSyD_0hKhrz0vC7X_9KRrXiTOnRGI9Pi6tBI",
+                        authDomain: "absensi-dan-penilaian-siswa.firebaseapp.com",
+                        databaseURL: "https://absensi-dan-penilaian-siswa-default-rtdb.asia-southeast1.firebasedatabase.app",
+                        projectId: "absensi-dan-penilaian-siswa",
+                        storageBucket: "absensi-dan-penilaian-siswa.appspot.com",
+                        messagingSenderId: "774655798848",
+                        appId: "1:774655798848:web:d6ddb5a04d4acd91d1b9a5"
+                    };
+                    
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(firebaseConfig);
+                    }
+                    
+                    auth = firebase.auth();
+                    database = firebase.database();
+                }
+                
+                if (!auth || !database) {
+                    throw new Error("Failed to get Firebase services");
+                }
+                
+                console.log("✅ Firebase services ready");
+                
+                // Setup auth state listener
+                auth.onAuthStateChanged(handleAuthStateChange);
+                
+            } catch (error) {
+                console.error("❌ Error initializing:", error);
+                showConnectionNotification('error', 'Inisialisasi Gagal', error.message, false);
             }
         }
-        
-        function showCacheWarning() {
-            const warning = document.getElementById('cacheWarning');
-            warning.style.display = 'block';
-            setTimeout(() => {
-                warning.style.display = 'none';
-            }, 3000);
-        }
-        
-        function clearCache() {
-            console.log("🧹 Clearing cache...");
+
+        async function handleAuthStateChange(user) {
+            if (!user) {
+                console.log("⚠️ No user, redirecting to login...");
+                setTimeout(() => {
+                    if (!currentUser) {
+                        window.location.href = 'index.html';
+                    }
+                }, 1000);
+                return;
+            }
             
-            // Clear localStorage
-            localStorage.removeItem('dashboardCache');
-            localStorage.removeItem('userClassesCache');
-            localStorage.removeItem('statsCache');
-            localStorage.removeItem('activitiesCache');
+            currentUser = user;
+            userEmail = user.email;
+            userRole = detectRoleFromEmail(userEmail);
             
-            // Force refresh without cache
-            window.location.reload(true);
+            document.getElementById('userName').textContent = user.email;
             
-            // Show notification
-            showCacheWarning();
+            console.log("✅ User authenticated:", user.email, "Role:", userRole);
+            
+            // Start connection monitoring
+            startConnectionMonitoring();
+            
+            // Initialize page only once
+            if (!isPageInitialized) {
+                initializeDashboardPage();
+                isPageInitialized = true;
+            }
+            
+            // Load initial data
+            loadInitialData();
         }
 
         // ============================================
-        // FUNGSI UTAMA DASHBOARD
+        // DASHBOARD PAGE FUNCTIONS
         // ============================================
+        function initializeDashboardPage() {
+            console.log("✅ Initializing dashboard page...");
+            
+            // Setup realtime updates
+            setupRealtimeUpdates();
+            
+            console.log("✅ Dashboard page ready");
+        }
+
+        async function loadInitialData() {
+            try {
+                console.log("📊 Loading initial data...");
+                
+                // Update user info
+                updateUserInfo();
+                
+                // Load user classes
+                await loadUserClasses();
+                
+                // Load dashboard stats
+                await loadDashboardStats();
+                
+                // Load recent activities
+                await loadRecentActivities();
+                
+                // Check admin access
+                checkAdminAccess();
+                
+                console.log("✅ Initial data loaded");
+                
+            } catch (error) {
+                console.error("❌ Error loading initial data:", error);
+            }
+        }
 
         // Deteksi role dari email
         function detectRoleFromEmail(email) {
@@ -696,23 +1019,37 @@
             return 'unknown';
         }
 
-        // Check admin access
-        function checkAdminAccess() {
-            const adminAccessDiv = document.getElementById('adminAccess');
-            if (userEmail === 'admin@rbt.com') {
-                adminAccessDiv.style.display = 'block';
-            } else {
-                adminAccessDiv.style.display = 'none';
+        // Update info pengguna
+        function updateUserInfo() {
+            const welcomeText = document.getElementById('welcomeText');
+            const userInfo = document.getElementById('userInfo');
+            
+            let roleText = '';
+            switch(userRole) {
+                case 'admin':
+                    roleText = '👑 Administrator';
+                    welcomeText.textContent = `Selamat datang, Administrator!`;
+                    break;
+                case 'guru_kelas':
+                    roleText = '👨‍🏫 Guru Kelas';
+                    welcomeText.textContent = `Selamat datang, Guru Kelas!`;
+                    break;
+                case 'guru_pjok':
+                    roleText = '🏃 Guru PJOK';
+                    welcomeText.textContent = `Selamat datang, Guru PJOK!`;
+                    break;
+                default:
+                    roleText = 'Pengguna';
+                    welcomeText.textContent = `Selamat datang!`;
             }
+            
+            userInfo.innerHTML = `<span class="role-badge">${roleText}</span> | ${userEmail}`;
         }
 
-        function goToAdmin() {
-            if (userEmail === 'admin@rbt.com') {
-                // Redirect to admin with cache busting
-                window.location.href = 'admin.html?v=' + new Date().getTime();
-            } else {
-                alert('Akses ditolak. Hanya administrator yang dapat mengakses halaman admin.');
-            }
+        // Load kelas pengguna
+        async function loadUserClasses() {
+            userClasses = getClassesForUser(userRole, userEmail);
+            displayClassesBadges(userClasses);
         }
 
         // Dapatkan kelas berdasarkan role
@@ -720,13 +1057,8 @@
             const classes = [];
             
             if (role === 'admin') {
-                // Admin akan diarahkan ke admin.html
-                setTimeout(() => {
-                    if (email === 'admin@rbt.com') {
-                        window.location.href = 'admin.html?v=' + new Date().getTime();
-                    }
-                }, 1000);
-                return classes;
+                // Admin akan diarahkan ke admin.html (tapi tetap tampilkan badge semua kelas)
+                return ['Semua Kelas'];
             }
             
             if (role === 'guru_kelas') {
@@ -770,71 +1102,6 @@
             return classes;
         }
 
-        // Update info pengguna
-        function updateUserInfo() {
-            const welcomeText = document.getElementById('welcomeText');
-            const userInfo = document.getElementById('userInfo');
-            
-            let roleText = '';
-            switch(userRole) {
-                case 'admin':
-                    roleText = '👑 Administrator';
-                    welcomeText.textContent = `Selamat datang, Administrator!`;
-                    break;
-                case 'guru_kelas':
-                    roleText = '👨‍🏫 Guru Kelas';
-                    welcomeText.textContent = `Selamat datang, Guru Kelas!`;
-                    break;
-                case 'guru_pjok':
-                    roleText = '🏃 Guru PJOK';
-                    welcomeText.textContent = `Selamat datang, Guru PJOK!`;
-                    break;
-                default:
-                    roleText = 'Pengguna';
-                    welcomeText.textContent = `Selamat datang!`;
-            }
-            
-            userInfo.innerHTML = `<span class="role-badge">${roleText}</span> | ${userEmail}`;
-        }
-
-        // Load kelas pengguna
-        function loadUserClasses() {
-            // Check cache first
-            const cachedClasses = localStorage.getItem('userClassesCache');
-            if (cachedClasses) {
-                userClasses = JSON.parse(cachedClasses);
-                displayClassesBadges(userClasses);
-                return;
-            }
-            
-            userClasses = getClassesForUser(userRole, userEmail);
-            const classesBadges = document.getElementById('classesBadges');
-            
-            if (userRole === 'admin') {
-                // Admin: deteksi semua kelas dari database
-                database.ref('students').once('value')
-                    .then((snapshot) => {
-                        if (snapshot.exists()) {
-                            const data = snapshot.val();
-                            userClasses = Object.keys(data).filter(key => /^\d+[A-Za-z]$/.test(key));
-                            displayClassesBadges(userClasses);
-                            // Cache the result
-                            localStorage.setItem('userClassesCache', JSON.stringify(userClasses));
-                        } else {
-                            classesBadges.innerHTML = '<span class="class-badge">Semua Kelas</span>';
-                        }
-                    })
-                    .catch((error) => {
-                        console.log("Tidak ada data kelas:", error);
-                        classesBadges.innerHTML = '<span class="class-badge">Semua Kelas</span>';
-                    });
-            } else {
-                displayClassesBadges(userClasses);
-                // Cache the result
-                localStorage.setItem('userClassesCache', JSON.stringify(userClasses));
-            }
-        }
-
         // Tampilkan badge kelas
         function displayClassesBadges(classes) {
             const classesBadges = document.getElementById('classesBadges');
@@ -854,18 +1121,7 @@
 
         // Load statistik dashboard
         async function loadDashboardStats() {
-            console.log("Memuat statistik dashboard...");
-            
-            // Check cache first
-            const cachedStats = localStorage.getItem('statsCache');
-            if (cachedStats) {
-                const stats = JSON.parse(cachedStats);
-                updateStatsUI(stats);
-                
-                // Still load fresh data in background
-                setTimeout(() => loadFreshStats(), 1000);
-                return;
-            }
+            console.log("📊 Memuat statistik dashboard...");
             
             // Reset UI first
             resetStatsUI();
@@ -877,16 +1133,6 @@
                 // Non-admin: hitung berdasarkan kelas yang diampu
                 await loadStatsForUser();
             }
-            
-            // Cache the results
-            const stats = {
-                totalSiswa: document.getElementById('totalSiswa').textContent,
-                absensiHariIni: document.getElementById('absensiHariIni').textContent,
-                nilaiMasuk: document.getElementById('nilaiMasuk').textContent,
-                rataRataNilai: document.getElementById('rataRataNilai').textContent,
-                timestamp: new Date().getTime()
-            };
-            localStorage.setItem('statsCache', JSON.stringify(stats));
         }
         
         function resetStatsUI() {
@@ -895,25 +1141,14 @@
             document.getElementById('nilaiMasuk').textContent = '0';
             document.getElementById('rataRataNilai').textContent = '0';
         }
-        
-        function updateStatsUI(stats) {
-            document.getElementById('totalSiswa').textContent = stats.totalSiswa || '0';
-            document.getElementById('absensiHariIni').textContent = stats.absensiHariIni || '0';
-            document.getElementById('nilaiMasuk').textContent = stats.nilaiMasuk || '0';
-            document.getElementById('rataRataNilai').textContent = stats.rataRataNilai || '0';
-        }
-        
-        async function loadFreshStats() {
-            console.log("Memuat data statistik terbaru...");
-            if (userRole === 'admin') {
-                await loadStatsForAdmin();
-            } else {
-                await loadStatsForUser();
-            }
-        }
 
         // Load statistik untuk admin
         async function loadStatsForAdmin() {
+            if (!database) {
+                console.error("Database tidak tersedia");
+                return;
+            }
+            
             try {
                 // Total siswa dari semua kelas
                 const studentsRef = database.ref('students');
@@ -935,15 +1170,25 @@
                 const attendanceSnapshot = await attendanceRef.once('value');
                 
                 let todayAttendance = 0;
+                let totalAttendancePossible = 0;
                 if (attendanceSnapshot.exists()) {
                     const attendanceData = attendanceSnapshot.val();
                     Object.keys(attendanceData).forEach(className => {
                         if (attendanceData[className] && attendanceData[className][today]) {
-                            todayAttendance += Object.keys(attendanceData[className][today]).length;
+                            const classAttendance = attendanceData[className][today];
+                            Object.values(classAttendance).forEach(record => {
+                                if (record && (record.status === 'hadir' || record.status === 'H' || record === 'hadir' || record === 'H')) {
+                                    todayAttendance++;
+                                }
+                            });
+                            totalAttendancePossible += Object.keys(classAttendance).length;
                         }
                     });
                 }
-                document.getElementById('absensiHariIni').textContent = todayAttendance;
+                
+                const attendanceRate = totalAttendancePossible > 0 ? 
+                    Math.round((todayAttendance / totalAttendancePossible) * 100) : 0;
+                document.getElementById('absensiHariIni').textContent = `${attendanceRate}%`;
                 
                 // Nilai masuk dari semua kelas
                 const nilaiRef = database.ref('penilaian');
@@ -965,8 +1210,8 @@
                                     // Hitung rata-rata
                                     Object.keys(nilaiData[className][semester]).forEach(studentId => {
                                         const studentNilai = nilaiData[className][semester][studentId];
-                                        if (studentNilai.nilai_total) {
-                                            totalNilai += studentNilai.nilai_total;
+                                        if (studentNilai && studentNilai.nilai_total) {
+                                            totalNilai += parseFloat(studentNilai.nilai_total) || 0;
                                             nilaiEntries++;
                                         }
                                     });
@@ -990,10 +1235,15 @@
         // Load statistik untuk user (non-admin)
         async function loadStatsForUser() {
             if (userClasses.length === 0) return;
+            if (!database) {
+                console.error("Database tidak tersedia");
+                return;
+            }
             
             try {
                 let totalStudents = 0;
                 let todayAttendance = 0;
+                let totalAttendancePossible = 0;
                 let nilaiCount = 0;
                 let totalNilai = 0;
                 let nilaiEntries = 0;
@@ -1015,7 +1265,13 @@
                     
                     if (attendanceSnapshot.exists()) {
                         const attendanceData = attendanceSnapshot.val();
-                        todayAttendance += Object.keys(attendanceData).length;
+                        totalAttendancePossible += Object.keys(attendanceData).length;
+                        
+                        Object.values(attendanceData).forEach(record => {
+                            if (record && (record.status === 'hadir' || record.status === 'H' || record === 'hadir' || record === 'H')) {
+                                todayAttendance++;
+                            }
+                        });
                     }
                     
                     // Nilai (cek semua semester)
@@ -1032,8 +1288,8 @@
                                 // Hitung rata-rata
                                 Object.keys(nilaiData[semester]).forEach(studentId => {
                                     const studentNilai = nilaiData[semester][studentId];
-                                    if (studentNilai.nilai_total) {
-                                        totalNilai += studentNilai.nilai_total;
+                                    if (studentNilai && studentNilai.nilai_total) {
+                                        totalNilai += parseFloat(studentNilai.nilai_total) || 0;
                                         nilaiEntries++;
                                     }
                                 });
@@ -1044,7 +1300,12 @@
                 
                 // Update UI
                 document.getElementById('totalSiswa').textContent = totalStudents;
-                document.getElementById('absensiHariIni').textContent = todayAttendance;
+                
+                // Hitung persentase kehadiran
+                const attendanceRate = totalAttendancePossible > 0 ? 
+                    Math.round((todayAttendance / totalAttendancePossible) * 100) : 0;
+                document.getElementById('absensiHariIni').textContent = `${attendanceRate}%`;
+                
                 document.getElementById('nilaiMasuk').textContent = nilaiCount;
                 
                 // Rata-rata nilai
@@ -1059,17 +1320,6 @@
         // Load aktivitas terbaru
         async function loadRecentActivities() {
             const activityList = document.getElementById('activityList');
-            
-            // Check cache first
-            const cachedActivities = localStorage.getItem('activitiesCache');
-            if (cachedActivities) {
-                const activities = JSON.parse(cachedActivities);
-                displayActivities(activities);
-                
-                // Still load fresh activities in background
-                setTimeout(() => loadFreshActivities(), 1000);
-                return;
-            }
             
             try {
                 let allActivities = [];
@@ -1088,9 +1338,6 @@
                 // Ambil 10 aktivitas terbaru
                 const recentActivities = allActivities.slice(0, 10);
                 
-                // Cache activities
-                localStorage.setItem('activitiesCache', JSON.stringify(recentActivities));
-                
                 // Tampilkan aktivitas
                 displayActivities(recentActivities);
                 
@@ -1104,32 +1351,12 @@
                 `;
             }
         }
-        
-        async function loadFreshActivities() {
-            console.log("Memuat aktivitas terbaru...");
-            try {
-                let allActivities = [];
-                
-                if (userRole === 'admin') {
-                    allActivities = await getAdminActivities();
-                } else {
-                    allActivities = await getUserActivities();
-                }
-                
-                allActivities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                const recentActivities = allActivities.slice(0, 10);
-                
-                localStorage.setItem('activitiesCache', JSON.stringify(recentActivities));
-                displayActivities(recentActivities);
-                
-            } catch (error) {
-                console.error("Error refreshing activities:", error);
-            }
-        }
 
         // Ambil aktivitas untuk admin
         async function getAdminActivities() {
             const activities = [];
+            
+            if (!database) return activities;
             
             // Ambil data penilaian terbaru
             const nilaiRef = database.ref('penilaian');
@@ -1193,6 +1420,7 @@
             const activities = [];
             
             if (userClasses.length === 0) return activities;
+            if (!database) return activities;
             
             // Proses setiap kelas
             for (const className of userClasses) {
@@ -1207,13 +1435,13 @@
                         if (nilaiData[semester]) {
                             Object.keys(nilaiData[semester]).forEach(studentId => {
                                 const nilai = nilaiData[semester][studentId];
-                                if (nilai.updatedAt) {
+                                if (nilai && nilai.updatedAt) {
                                     activities.push({
                                         type: 'penilaian',
                                         title: `Nilai diperbarui`,
                                         description: `${nilai.studentName || 'Siswa'} - Kelas ${className} (Semester ${semester})`,
                                         timestamp: nilai.updatedAt,
-                                        teacher: nilai.teacher || 'Guru'
+                                        teacher: nilai.teacher || userEmail
                                     });
                                 }
                             });
@@ -1306,55 +1534,72 @@
             });
         }
 
+        // Check admin access
+        function checkAdminAccess() {
+            const adminAccessDiv = document.getElementById('adminAccess');
+            if (userEmail === 'admin@rbt.com') {
+                adminAccessDiv.style.display = 'block';
+            } else {
+                adminAccessDiv.style.display = 'none';
+            }
+        }
+
         // ============================================
-        // FUNGSI LAINNYA
+        // FUNGSI UTILITY
         // ============================================
+
+        // Go to admin page
+        function goToAdmin() {
+            if (userEmail === 'admin@rbt.com') {
+                window.location.href = 'admin.html?v=' + new Date().getTime();
+            } else {
+                alert('Akses ditolak. Hanya administrator yang dapat mengakses halaman admin.');
+            }
+        }
 
         // Export laporan
         function exportLaporan() {
             alert("Fitur export laporan akan segera tersedia!");
-            // Implementasi export ke Excel/PDF bisa ditambahkan di sini
+        }
+
+        // Refresh dashboard
+        function refreshDashboard() {
+            console.log("🔄 Refreshing dashboard...");
+            loadDashboardStats();
+            loadRecentActivities();
+            showConnectionNotification('success', 'Diperbarui', 'Data dashboard diperbarui', true);
         }
 
         // Logout
         function logout() {
             if (confirm('Apakah Anda yakin ingin logout?')) {
+                // Clean up realtime listeners
+                if (realtimeUnsubscribe) {
+                    realtimeUnsubscribe();
+                }
+                
+                if (window.firebaseApp && window.firebaseApp.removeAllListeners) {
+                    window.firebaseApp.removeAllListeners();
+                }
+                
                 auth.signOut().then(() => {
-                    // Clear all cache
                     localStorage.clear();
-                    sessionStorage.clear();
-                    // Redirect with cache busting
-                    window.location.href = 'index.html?v=' + new Date().getTime();
-                }).catch((error) => {
-                    console.error("Error logging out:", error);
-                    alert("Gagal logout, silakan coba lagi.");
+                    window.location.href = 'index.html';
+                }).catch(error => {
+                    console.error('Logout error:', error);
+                    showConnectionNotification('error', 'Gagal', 'Gagal logout', false);
                 });
             }
         }
 
-        // Refresh dashboard (bisa dipanggil dari halaman lain)
-        function refreshDashboard() {
-            console.log("🔄 Refreshing dashboard...");
-            loadDashboardStats();
-            loadRecentActivities();
-        }
-
         // ============================================
-        // SAVE APP VERSION TO CACHE
-        // ============================================
-        localStorage.setItem('appVersion', appVersion);
-        localStorage.setItem('cacheTimestamp', new Date().getTime().toString());
-
-        // ============================================
-        // EXPOSE FUNGSI KE GLOBAL
+        // EXPOSE FUNCTIONS
         // ============================================
         window.logout = logout;
         window.exportLaporan = exportLaporan;
         window.refreshDashboard = refreshDashboard;
-        window.clearCache = clearCache;
         window.goToAdmin = goToAdmin;
-        
-        console.log("✅ Dashboard initialized successfully");
+        window.hideConnectionNotification = hideConnectionNotification;
     </script>
 </body>
 </html>

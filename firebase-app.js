@@ -1,6 +1,5 @@
 // ============================================
-// KONFIGURASI FIREBASE YANG BENAR
-// DIPERBAIKI: Versi konsisten dengan index.html
+// KONFIGURASI FIREBASE YANG BENAR DAN SERAGAM
 // ============================================
 const firebaseConfig = {
     apiKey: "AIzaSyD_0hKhrz0vC7X_9KRrXiTOnRGI9Pi6tBI",
@@ -13,40 +12,54 @@ const firebaseConfig = {
 };
 
 // ============================================
-// INISIALISASI FIREBASE
-// DIPERBAIKI: Error handling yang lebih baik
+// INISIALISASI FIREBASE - DIPERBAIKI
 // ============================================
 let firebaseAppInstance = null;
 let firebaseAuth = null;
 let firebaseDatabase = null;
 let isFirebaseInitialized = false;
+let isInitializing = false;
+let databaseListeners = {};
+let realtimeData = {
+    students: {},
+    attendance: {},
+    scores: {}
+};
+
+// Flag untuk mencegah multiple redirects
+let isRedirecting = false;
+let authChecked = false;
 
 function initializeFirebase() {
     console.log("🚀 Memulai inisialisasi Firebase...");
     
+    // Cek jika sudah dalam proses inisialisasi
+    if (isInitializing) {
+        console.log("⏳ Firebase sedang dalam proses inisialisasi, tunggu...");
+        return false;
+    }
+    
+    // Cek jika sudah diinisialisasi
+    if (isFirebaseInitialized && firebaseAppInstance) {
+        console.log("✅ Firebase sudah diinisialisasi sebelumnya");
+        return true;
+    }
+    
+    isInitializing = true;
+    
     try {
-        // DIPERBAIKI: Tidak langsung throw error, coba load SDK dulu
+        // Cek Firebase SDK
         if (typeof firebase === 'undefined') {
-            console.warn("⚠️ Firebase SDK tidak ditemukan, mencoba memuat...");
-            const success = loadFirebaseSDK();
-            if (!success) {
-                console.error("❌ Gagal memuat Firebase SDK");
-                return false;
-            }
-            // Tunggu sebentar untuk SDK dimuat
-            return new Promise((resolve) => {
-                setTimeout(() => {
-                    const retryResult = retryInitializeFirebase();
-                    resolve(retryResult);
-                }, 1000);
-            });
+            console.error("❌ Firebase SDK tidak ditemukan");
+            showGlobalError("Firebase SDK tidak ditemukan. Periksa koneksi internet.");
+            isInitializing = false;
+            return false;
         }
         
-        // Cek apakah Firebase sudah diinisialisasi
+        // Inisialisasi Firebase App
         if (!firebase.apps.length) {
             console.log("📝 Menginisialisasi aplikasi Firebase baru...");
             firebaseAppInstance = firebase.initializeApp(firebaseConfig);
-            console.log("✅ Firebase App berhasil diinisialisasi");
         } else {
             console.log("🔧 Menggunakan Firebase App yang sudah ada");
             firebaseAppInstance = firebase.app();
@@ -58,6 +71,10 @@ function initializeFirebase() {
         
         console.log("✅ Firebase Auth & Database berhasil diinisialisasi");
         isFirebaseInitialized = true;
+        isInitializing = false;
+        
+        // Setup auth state change listener (hanya sekali)
+        setupAuthStateListener();
         
         // Test koneksi
         testFirebaseConnection();
@@ -66,41 +83,262 @@ function initializeFirebase() {
         
     } catch (error) {
         console.error("❌ Gagal menginisialisasi Firebase:", error);
+        isInitializing = false;
         showGlobalError("Gagal menginisialisasi Firebase: " + error.message);
-        
-        // DIPERBAIKI: Coba recovery dengan reload SDK
-        setTimeout(() => {
-            console.log("🔄 Mencoba recovery...");
-            loadFirebaseSDK();
-        }, 3000);
-        
         return false;
     }
 }
 
-// Fungsi tambahan untuk retry inisialisasi
-function retryInitializeFirebase() {
-    if (typeof firebase === 'undefined') {
-        console.error("❌ Firebase SDK masih belum tersedia");
-        return false;
+// ============================================
+// AUTH STATE LISTENER - DIPERBAIKI (NON-REDIRECTING)
+// ============================================
+function setupAuthStateListener() {
+    if (!firebaseAuth) return;
+    
+    console.log("👤 Setting up auth state listener...");
+    
+    // Hanya setup listener sekali
+    if (window.firebaseAuthListenerSet) {
+        console.log("⚠️ Auth listener sudah disetup sebelumnya");
+        return;
     }
-    return initializeFirebase();
+    
+    window.firebaseAuthListenerSet = true;
+    
+    firebaseAuth.onAuthStateChanged((user) => {
+        console.log("👤 Auth state changed:", user ? user.email : "No user");
+        
+        if (user) {
+            const userInfo = teacherClassMapping[user.email];
+            if (userInfo) {
+                console.log(`✅ User authenticated: ${user.email} (${userInfo.role})`);
+                
+                // Simpan ke localStorage dengan timestamp
+                localStorage.setItem('userEmail', user.email);
+                localStorage.setItem('userRole', userInfo.role);
+                localStorage.setItem('userName', userInfo.name || user.email.split('@')[0]);
+                localStorage.setItem('loginTime', Date.now().toString());
+                
+                if (userInfo.role === 'guru_kelas' || userInfo.role === 'guru_pjok') {
+                    localStorage.setItem('teacherClasses', JSON.stringify(userInfo.classes));
+                }
+                
+                // Setup realtime listeners jika di halaman yang membutuhkan
+                if (!window.location.pathname.includes('index.html')) {
+                    setTimeout(() => {
+                        setupRealtimeListeners();
+                    }, 1000);
+                }
+            } else {
+                console.error("❌ User tidak terdaftar dalam mapping:", user.email);
+                showNotification("Akun Anda tidak terdaftar dalam sistem", "error");
+                
+                // Sign out dan clear data
+                setTimeout(() => {
+                    if (firebaseAuth) {
+                        firebaseAuth.signOut().then(() => {
+                            clearUserData();
+                        });
+                    }
+                }, 2000);
+            }
+        } else {
+            console.log("ℹ️ User logged out or not authenticated");
+            
+            // Hapus realtime listeners saat logout
+            removeAllListeners();
+            
+            // HANYA clear localStorage jika benar-benar logout
+            // JANGAN auto-redirect di sini, biarkan validator yang handle
+        }
+    }, (error) => {
+        console.error("❌ Auth state listener error:", error);
+        // Jangan redirect di sini
+    });
+}
+
+// ============================================
+// FUNGSI CHECK AUTH - DIPERBAIKI (NON-REDIRECTING)
+// ============================================
+function checkAuth(requiredRole = null) {
+    return new Promise((resolve, reject) => {
+        if (authChecked) {
+            console.log("✅ Auth sudah diperiksa sebelumnya");
+            // Return cached result
+            const user = firebaseAuth ? firebaseAuth.currentUser : null;
+            if (user) {
+                const userInfo = teacherClassMapping[user.email];
+                if (userInfo && (!requiredRole || userInfo.role === requiredRole)) {
+                    resolve(userInfo);
+                } else {
+                    reject(new Error("Izin tidak cukup"));
+                }
+            } else {
+                reject(new Error("Pengguna belum terautentikasi"));
+            }
+            return;
+        }
+        
+        if (!firebaseAuth) {
+            console.warn("⚠️ Firebase Auth belum diinisialisasi");
+            // Initialize Firebase
+            const initialized = initializeFirebase();
+            if (!initialized) {
+                reject(new Error("Firebase Auth belum diinisialisasi"));
+                return;
+            }
+        }
+        
+        const unsubscribe = firebaseAuth.onAuthStateChanged(
+            (user) => {
+                unsubscribe();
+                authChecked = true;
+                
+                if (!user) {
+                    console.log("⚠️ Pengguna belum login di Firebase");
+                    // JANGAN redirect di sini, hanya reject
+                    reject(new Error("Pengguna belum terautentikasi di Firebase"));
+                    return;
+                }
+                
+                console.log("✅ Pengguna terautentikasi di Firebase:", user.email);
+                
+                const userInfo = teacherClassMapping[user.email];
+                if (!userInfo) {
+                    console.error("❌ Email tidak ditemukan dalam mapping:", user.email);
+                    // JANGAN redirect di sini
+                    reject(new Error("Akun tidak terdaftar"));
+                    return;
+                }
+                
+                // Cek peran yang dibutuhkan
+                if (requiredRole && userInfo.role !== requiredRole) {
+                    console.log(`⚠️ Peran tidak sesuai. Peran pengguna: ${userInfo.role}, Diperlukan: ${requiredRole}`);
+                    reject(new Error("Izin tidak cukup"));
+                    return;
+                }
+                
+                resolve(userInfo);
+            },
+            (error) => {
+                console.error("❌ Error status autentikasi:", error);
+                reject(error);
+            }
+        );
+    });
+}
+
+// ============================================
+// REALTIME LISTENERS
+// ============================================
+function setupRealtimeListeners() {
+    if (!firebaseDatabase) {
+        console.warn("⚠️ Database belum tersedia untuk setup listeners");
+        return;
+    }
+    
+    // Cek jika sudah ada listener aktif
+    if (Object.keys(databaseListeners).length > 0) {
+        console.log("⚠️ Listeners sudah aktif");
+        return;
+    }
+    
+    console.log("📡 Menyiapkan realtime listeners...");
+    
+    // Listen untuk data siswa
+    databaseListeners.students = firebaseDatabase.ref('students').on('value', 
+        (snapshot) => {
+            console.log("📊 Data siswa diperbarui realtime");
+            realtimeData.students = snapshot.val() || {};
+            
+            window.dispatchEvent(new CustomEvent('studentsUpdated', {
+                detail: { data: realtimeData.students }
+            }));
+        },
+        (error) => {
+            console.error("❌ Error listener siswa:", error);
+        }
+    );
+    
+    // Listen untuk data absensi
+    databaseListeners.attendance = firebaseDatabase.ref('attendance').on('value',
+        (snapshot) => {
+            console.log("📊 Data absensi diperbarui realtime");
+            realtimeData.attendance = snapshot.val() || {};
+            
+            window.dispatchEvent(new CustomEvent('attendanceUpdated', {
+                detail: { data: realtimeData.attendance }
+            }));
+        },
+        (error) => {
+            console.error("❌ Error listener absensi:", error);
+        }
+    );
+    
+    // Listen untuk data nilai
+    databaseListeners.scores = firebaseDatabase.ref('penilaian').on('value',
+        (snapshot) => {
+            console.log("📊 Data nilai diperbarui realtime");
+            realtimeData.scores = snapshot.val() || {};
+            
+            window.dispatchEvent(new CustomEvent('scoresUpdated', {
+                detail: { data: realtimeData.scores }
+            }));
+        },
+        (error) => {
+            console.error("❌ Error listener nilai:", error);
+        }
+    );
+    
+    console.log("✅ Realtime listeners berhasil disetup");
+}
+
+function removeAllListeners() {
+    if (!firebaseDatabase) return;
+    
+    Object.keys(databaseListeners).forEach(key => {
+        if (databaseListeners[key]) {
+            try {
+                firebaseDatabase.ref(key).off('value', databaseListeners[key]);
+            } catch (error) {
+                console.warn(`⚠️ Error removing listener for ${key}:`, error);
+            }
+        }
+    });
+    databaseListeners = {};
+    console.log("🧹 Semua listeners dibersihkan");
 }
 
 // ============================================
 // TEST KONEKSI FIREBASE
 // ============================================
 function testFirebaseConnection() {
-    if (!firebaseDatabase) return;
+    if (!firebaseDatabase) {
+        console.warn("⚠️ Database belum tersedia untuk test koneksi");
+        return;
+    }
     
-    firebaseDatabase.ref('.info/connected').on('value', (snapshot) => {
-        const isConnected = snapshot.val() === true;
-        console.log(`📡 Status Koneksi Firebase: ${isConnected ? 'TERHUBUNG' : 'TERPUTUS'}`);
+    try {
+        const connectedRef = firebaseDatabase.ref('.info/connected');
         
-        if (!isConnected) {
-            showNotification("Koneksi internet terputus", "warning");
-        }
-    });
+        databaseListeners.connection = connectedRef.on('value', (snapshot) => {
+            const isConnected = snapshot.val() === true;
+            console.log(`📡 Status Koneksi Firebase: ${isConnected ? 'TERHUBUNG ✅' : 'TERPUTUS ❌'}`);
+            
+            window.firebaseConnectionStatus = isConnected;
+            
+            window.dispatchEvent(new CustomEvent('firebaseConnectionChange', {
+                detail: { connected: isConnected }
+            }));
+            
+            if (!isConnected) {
+                showNotification("Koneksi ke database terputus. Periksa internet Anda.", "warning");
+            }
+        });
+        
+    } catch (error) {
+        console.error("❌ Error test koneksi:", error);
+    }
 }
 
 // ============================================
@@ -116,444 +354,89 @@ const teacherClassMapping = {
         name: 'Administrator'
     },
     
-    // GURU KELAS 1
-    'kelas1a@rbt.com': { role: 'guru_kelas', classes: ['1A'], name: 'Guru Kelas 1A' },
-    'kelas1b@rbt.com': { role: 'guru_kelas', classes: ['1B'], name: 'Guru Kelas 1B' },
-    'kelas1c@rbt.com': { role: 'guru_kelas', classes: ['1C'], name: 'Guru Kelas 1C' },
-    'kelas1d@rbt.com': { role: 'guru_kelas', classes: ['1D'], name: 'Guru Kelas 1D' },
-    
-    // GURU KELAS 2
-    'kelas2a@rbt.com': { role: 'guru_kelas', classes: ['2A'], name: 'Guru Kelas 2A' },
-    'kelas2b@rbt.com': { role: 'guru_kelas', classes: ['2B'], name: 'Guru Kelas 2B' },
-    'kelas2c@rbt.com': { role: 'guru_kelas', classes: ['2C'], name: 'Guru Kelas 2C' },
-    'kelas2d@rbt.com': { role: 'guru_kelas', classes: ['2D'], name: 'Guru Kelas 2D' },
-    'kelas2e@rbt.com': { role: 'guru_kelas', classes: ['2E'], name: 'Guru Kelas 2E' },
-    
-    // GURU KELAS 3
-    'kelas3a@rbt.com': { role: 'guru_kelas', classes: ['3A'], name: 'Guru Kelas 3A' },
-    'kelas3b@rbt.com': { role: 'guru_kelas', classes: ['3B'], name: 'Guru Kelas 3B' },
-    'kelas3c@rbt.com': { role: 'guru_kelas', classes: ['3C'], name: 'Guru Kelas 3C' },
-    'kelas3d@rbt.com': { role: 'guru_kelas', classes: ['3D'], name: 'Guru Kelas 3D' },
-    'kelas3e@rbt.com': { role: 'guru_kelas', classes: ['3E'], name: 'Guru Kelas 3E' },
-    
-    // GURU KELAS 4
-    'kelas4a@rbt.com': { role: 'guru_kelas', classes: ['4A'], name: 'Guru Kelas 4A' },
-    'kelas4b@rbt.com': { role: 'guru_kelas', classes: ['4B'], name: 'Guru Kelas 4B' },
-    'kelas4c@rbt.com': { role: 'guru_kelas', classes: ['4C'], name: 'Guru Kelas 4C' },
-    'kelas4d@rbt.com': { role: 'guru_kelas', classes: ['4D'], name: 'Guru Kelas 4D' },
-    'kelas4e@rbt.com': { role: 'guru_kelas', classes: ['4E'], name: 'Guru Kelas 4E' },
-    'kelas4f@rbt.com': { role: 'guru_kelas', classes: ['4F'], name: 'Guru Kelas 4F' },
-    
-    // GURU KELAS 5
-    'kelas5a@rbt.com': { role: 'guru_kelas', classes: ['5A'], name: 'Guru Kelas 5A' },
-    'kelas5b@rbt.com': { role: 'guru_kelas', classes: ['5B'], name: 'Guru Kelas 5B' },
-    'kelas5c@rbt.com': { role: 'guru_kelas', classes: ['5C'], name: 'Guru Kelas 5C' },
-    'kelas5d@rbt.com': { role: 'guru_kelas', classes: ['5D'], name: 'Guru Kelas 5D' },
-    'kelas5e@rbt.com': { role: 'guru_kelas', classes: ['5E'], name: 'Guru Kelas 5E' },
-    
-    // GURU KELAS 6
-    'kelas6a@rbt.com': { role: 'guru_kelas', classes: ['6A'], name: 'Guru Kelas 6A' },
-    'kelas6b@rbt.com': { role: 'guru_kelas', classes: ['6B'], name: 'Guru Kelas 6B' },
-    'kelas6c@rbt.com': { role: 'guru_kelas', classes: ['6C'], name: 'Guru Kelas 6C' },
-    'kelas6d@rbt.com': { role: 'guru_kelas', classes: ['6D'], name: 'Guru Kelas 6D' },
-    'kelas6e@rbt.com': { role: 'guru_kelas', classes: ['6E'], name: 'Guru Kelas 6E' },
+    // GURU KELAS
+    'gurukelas@rbt.com': {
+        role: 'guru_kelas',
+        classes: ['1A', '1B'],
+        name: 'Guru Kelas'
+    },
     
     // GURU PJOK
-    'pjok1@rbt.com': { 
-        role: 'guru_pjok', 
-        classes: ['1A', '1B', '1C', '1D', '2A', '2B', '2C', '2D', '2E'],
-        name: 'Guru PJOK 1'
-    },
-    'pjok2@rbt.com': { 
-        role: 'guru_pjok', 
-        classes: ['3A', '3B', '3C', '3D', '3E', '4A', '4B', '4C', '4D', '4E', '4F'],
-        name: 'Guru PJOK 2'
-    },
-    'pjok3@rbt.com': { 
-        role: 'guru_pjok', 
-        classes: ['5A', '5B', '5C', '5D', '5E', '6A', '6B', '6C', '6D', '6E'],
-        name: 'Guru PJOK 3'
+    'gurupjok@rbt.com': {
+        role: 'guru_pjok',
+        classes: ['1A', '1B', '1C'],
+        name: 'Guru PJOK'
     }
 };
 
 // ============================================
-// FUNGSI ADMIN BARU - DITAMBAHKAN
+// FUNGSI LOGOUT - DIPERBAIKI
 // ============================================
-
-// Fungsi untuk menghapus semua nilai
-async function deleteAllScores(options = {}) {
-    if (!firebaseDatabase) {
-        throw new Error("Database tidak tersedia");
-    }
-    
-    const { kelas, studentId, confirmation = true } = options;
-    
-    if (confirmation) {
-        const confirmMessage = studentId 
-            ? `Apakah Anda yakin ingin menghapus semua nilai untuk siswa ${studentId}?`
-            : kelas 
-                ? `Apakah Anda yakin ingin menghapus semua nilai untuk kelas ${kelas}?`
-                : "Apakah Anda yakin ingin menghapus SEMUA NILAI di seluruh sekolah?";
-        
-        if (!confirm(confirmMessage)) {
-            return { success: false, message: "Dibatalkan oleh pengguna" };
-        }
-    }
-    
-    try {
-        showNotification("Menghapus nilai...", "info");
-        
-        let path = 'scores';
-        if (kelas) {
-            path = `scores/${kelas}`;
-            if (studentId) {
-                path = `scores/${kelas}/${studentId}`;
-            }
-        }
-        
-        await firebaseDatabase.ref(path).remove();
-        
-        const successMessage = studentId 
-            ? `Semua nilai untuk siswa ${studentId} berhasil dihapus`
-            : kelas 
-                ? `Semua nilai untuk kelas ${kelas} berhasil dihapus`
-                : "Semua nilai berhasil dihapus";
-        
-        showNotification(successMessage, "success");
-        return { success: true, message: successMessage };
-        
-    } catch (error) {
-        console.error("Error menghapus nilai:", error);
-        showNotification("Gagal menghapus nilai: " + error.message, "error");
-        return { success: false, message: error.message };
-    }
-}
-
-// Fungsi untuk menghapus semua absensi
-async function deleteAllAttendance(options = {}) {
-    if (!firebaseDatabase) {
-        throw new Error("Database tidak tersedia");
-    }
-    
-    const { kelas, studentId, date, confirmation = true } = options;
-    
-    if (confirmation) {
-        const confirmMessage = studentId 
-            ? `Apakah Anda yakin ingin menghapus semua absensi untuk siswa ${studentId}?`
-            : kelas 
-                ? `Apakah Anda yakin ingin menghapus semua absensi untuk kelas ${kelas}?`
-                : "Apakah Anda yakin ingin menghapus SEMUA ABSENSI di seluruh sekolah?";
-        
-        if (!confirm(confirmMessage)) {
-            return { success: false, message: "Dibatalkan oleh pengguna" };
-        }
-    }
-    
-    try {
-        showNotification("Menghapus absensi...", "info");
-        
-        let path = 'attendance';
-        if (kelas) {
-            path = `attendance/${kelas}`;
-            if (studentId) {
-                path = `attendance/${kelas}/${studentId}`;
-                if (date) {
-                    path = `attendance/${kelas}/${studentId}/${date}`;
-                }
-            }
-        }
-        
-        await firebaseDatabase.ref(path).remove();
-        
-        const successMessage = studentId 
-            ? `Semua absensi untuk siswa ${studentId} berhasil dihapus`
-            : kelas 
-                ? `Semua absensi untuk kelas ${kelas} berhasil dihapus`
-                : "Semua absensi berhasil dihapus";
-        
-        showNotification(successMessage, "success");
-        return { success: true, message: successMessage };
-        
-    } catch (error) {
-        console.error("Error menghapus absensi:", error);
-        showNotification("Gagal menghapus absensi: " + error.message, "error");
-        return { success: false, message: error.message };
-    }
-}
-
-// Fungsi untuk mendapatkan daftar siswa
-async function getStudents(kelas = null) {
-    if (!firebaseDatabase) {
-        throw new Error("Database tidak tersedia");
-    }
-    
-    try {
-        let path = 'students';
-        if (kelas) {
-            path = `students/${kelas}`;
-        }
-        
-        const snapshot = await firebaseDatabase.ref(path).once('value');
-        
-        if (!snapshot.exists()) {
-            return [];
-        }
-        
-        const students = [];
-        if (kelas) {
-            // Format untuk satu kelas
-            snapshot.forEach((childSnapshot) => {
-                const student = childSnapshot.val();
-                student.id = childSnapshot.key;
-                students.push(student);
-            });
-        } else {
-            // Format untuk semua kelas
-            snapshot.forEach((classSnapshot) => {
-                classSnapshot.forEach((childSnapshot) => {
-                    const student = childSnapshot.val();
-                    student.id = childSnapshot.key;
-                    students.push(student);
-                });
-            });
-        }
-        
-        return students;
-        
-    } catch (error) {
-        console.error("Error mendapatkan siswa:", error);
-        throw error;
-    }
-}
-
-// Fungsi untuk mengedit data siswa
-async function updateStudent(studentId, kelas, updates) {
-    if (!firebaseDatabase) {
-        throw new Error("Database tidak tersedia");
-    }
-    
-    if (!studentId || !kelas) {
-        throw new Error("ID siswa dan kelas diperlukan");
-    }
-    
-    try {
-        // Validasi jenis kelamin
-        if (updates.jenis_kelamin && !['L', 'P'].includes(updates.jenis_kelamin)) {
-            throw new Error("Jenis kelamin harus 'L' atau 'P'");
-        }
-        
-        const studentRef = firebaseDatabase.ref(`students/${kelas}/${studentId}`);
-        
-        // Cek apakah siswa ada
-        const snapshot = await studentRef.once('value');
-        if (!snapshot.exists()) {
-            throw new Error(`Siswa dengan ID ${studentId} tidak ditemukan di kelas ${kelas}`);
-        }
-        
-        // Update data
-        await studentRef.update(updates);
-        
-        showNotification(`Data siswa berhasil diperbarui`, "success");
-        return { success: true, message: "Data siswa berhasil diperbarui" };
-        
-    } catch (error) {
-        console.error("Error mengupdate siswa:", error);
-        showNotification("Gagal mengupdate siswa: " + error.message, "error");
-        return { success: false, message: error.message };
-    }
-}
-
-// Fungsi untuk menghapus siswa
-async function deleteStudent(studentId, kelas) {
-    if (!firebaseDatabase) {
-        throw new Error("Database tidak tersedia");
-    }
-    
-    if (!confirm(`Apakah Anda yakin ingin menghapus siswa ${studentId} dari kelas ${kelas}?`)) {
-        return { success: false, message: "Dibatalkan oleh pengguna" };
-    }
-    
-    try {
-        const studentRef = firebaseDatabase.ref(`students/${kelas}/${studentId}`);
-        
-        // Hapus juga data nilai dan absensi terkait
-        const scoreRef = firebaseDatabase.ref(`scores/${kelas}/${studentId}`);
-        const attendanceRef = firebaseDatabase.ref(`attendance/${kelas}/${studentId}`);
-        
-        await Promise.all([
-            studentRef.remove(),
-            scoreRef.remove(),
-            attendanceRef.remove()
-        ]);
-        
-        showNotification(`Siswa ${studentId} berhasil dihapus`, "success");
-        return { success: true, message: "Siswa berhasil dihapus" };
-        
-    } catch (error) {
-        console.error("Error menghapus siswa:", error);
-        showNotification("Gagal menghapus siswa: " + error.message, "error");
-        return { success: false, message: error.message };
-    }
-}
-
-// ============================================
-// FUNGSI AUTHENTIKASI - DIPERBAIKI
-// ============================================
-function checkAuth(requiredRole = null) {
-    return new Promise((resolve, reject) => {
-        // DIPERBAIKI: Cek apakah Firebase Auth sudah diinisialisasi
-        if (!firebaseAuth) {
-            console.warn("⚠️ Firebase Auth belum diinisialisasi, mencoba inisialisasi...");
-            const initialized = initializeFirebase();
-            if (!initialized) {
-                reject(new Error("Firebase Auth belum diinisialisasi"));
-                return;
-            }
-        }
-        
-        const unsubscribe = firebaseAuth.onAuthStateChanged(
-            (user) => {
-                unsubscribe();
-                
-                if (!user) {
-                    console.log("⚠️ Pengguna belum login, mengarahkan ke halaman login...");
-                    window.location.href = 'index.html?v=' + Date.now();
-                    reject(new Error("Pengguna belum terautentikasi"));
-                    return;
-                }
-                
-                console.log("✅ Pengguna terautentikasi:", user.email);
-                
-                const userInfo = teacherClassMapping[user.email];
-                if (!userInfo) {
-                    console.error("❌ Email tidak ditemukan dalam mapping:", user.email);
-                    showNotification("Akun Anda tidak terdaftar dalam sistem", "error");
-                    
-                    setTimeout(() => {
-                        logout();
-                    }, 2000);
-                    
-                    reject(new Error("Akun tidak terdaftar"));
-                    return;
-                }
-                
-                // Simpan informasi pengguna ke localStorage
-                localStorage.setItem('userEmail', user.email);
-                localStorage.setItem('userRole', userInfo.role);
-                localStorage.setItem('userName', userInfo.name);
-                localStorage.setItem('userClasses', JSON.stringify(userInfo.classes));
-                
-                // Cek peran yang dibutuhkan
-                if (requiredRole && userInfo.role !== requiredRole) {
-                    console.log(`⚠️ Peran tidak sesuai. Peran pengguna: ${userInfo.role}, Diperlukan: ${requiredRole}`);
-                    
-                    // Redirect berdasarkan peran
-                    if (userInfo.role === 'admin') {
-                        window.location.href = 'admin.html?v=' + Date.now();
-                    } else {
-                        window.location.href = 'dashboard.html?v=' + Date.now();
-                    }
-                    
-                    reject(new Error("Izin tidak cukup"));
-                    return;
-                }
-                
-                resolve(userInfo);
-            },
-            (error) => {
-                console.error("❌ Error status autentikasi:", error);
-                showNotification("Error autentikasi: " + error.message, "error");
-                reject(error);
-            }
-        );
-    });
-}
-
 function logout() {
     if (confirm('Apakah Anda yakin ingin logout?')) {
+        // Set flag redirecting
+        isRedirecting = true;
+        
+        // Remove all listeners
+        removeAllListeners();
+        
+        // Clear localStorage
+        clearUserData();
+        
+        // Sign out from Firebase
         if (firebaseAuth) {
             firebaseAuth.signOut()
                 .then(() => {
-                    clearUserData();
-                    window.location.href = 'index.html?v=' + Date.now();
+                    console.log("✅ Logout berhasil dari Firebase");
+                    window.location.href = 'index.html';
                 })
                 .catch(error => {
-                    console.error("❌ Error logout:", error);
-                    showNotification("Gagal logout", "error");
+                    console.error("❌ Error logout dari Firebase:", error);
+                    // Tetap redirect ke index
+                    window.location.href = 'index.html';
                 });
         } else {
-            clearUserData();
-            window.location.href = 'index.html?v=' + Date.now();
+            window.location.href = 'index.html';
         }
     }
-}
-
-function clearUserData() {
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userClasses');
-    sessionStorage.clear();
-    console.log("🧹 Data pengguna telah dibersihkan");
 }
 
 // ============================================
 // FUNGSI NOTIFIKASI
 // ============================================
-function showNotification(message, type = 'info') {
-    // Hapus notifikasi sebelumnya
-    const existing = document.querySelector('.firebase-notification');
-    if (existing) existing.remove();
+function showNotification(message, type = 'info', duration = 3000) {
+    // Remove existing notifications
+    document.querySelectorAll('.firebase-notification').forEach(n => n.remove());
     
-    // Buat notifikasi baru
     const notification = document.createElement('div');
     notification.className = `firebase-notification ${type}`;
-    
-    // Tentukan ikon berdasarkan tipe
-    let icon = 'fa-info-circle';
-    let bgColor = '#3498db';
-    
-    switch(type) {
-        case 'success':
-            icon = 'fa-check-circle';
-            bgColor = '#27ae60';
-            break;
-        case 'error':
-            icon = 'fa-exclamation-circle';
-            bgColor = '#e74c3c';
-            break;
-        case 'warning':
-            icon = 'fa-exclamation-triangle';
-            bgColor = '#f39c12';
-            break;
-    }
-    
-    notification.innerHTML = `
-        <i class="fas ${icon}"></i>
-        <span>${message}</span>
-    `;
-    
+    notification.textContent = message;
     notification.style.cssText = `
         position: fixed;
         top: 20px;
         right: 20px;
         padding: 15px 20px;
-        border-radius: 10px;
-        background: ${bgColor};
+        border-radius: 8px;
         color: white;
         font-weight: 500;
         z-index: 10000;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        display: flex;
-        align-items: center;
-        gap: 10px;
         animation: slideIn 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         max-width: 400px;
     `;
     
+    if (type === 'success') {
+        notification.style.background = '#38a169';
+    } else if (type === 'error') {
+        notification.style.background = '#e53e3e';
+    } else if (type === 'warning') {
+        notification.style.background = '#d69e2e';
+    } else {
+        notification.style.background = '#4299e1';
+    }
+    
     document.body.appendChild(notification);
     
-    // Hapus otomatis setelah 3 detik
     setTimeout(() => {
         notification.style.opacity = '0';
         notification.style.transition = 'opacity 0.3s';
@@ -562,214 +445,12 @@ function showNotification(message, type = 'info') {
                 notification.parentNode.removeChild(notification);
             }
         }, 300);
-    }, 3000);
+    }, duration);
 }
 
 function showGlobalError(message) {
-    console.error("🌍 ERROR GLOBAL:", message);
-    
-    // Buat atau update error container
-    let errorContainer = document.getElementById('global-error');
-    if (!errorContainer) {
-        errorContainer = document.createElement('div');
-        errorContainer.id = 'global-error';
-        errorContainer.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            background: #e74c3c;
-            color: white;
-            padding: 12px 20px;
-            text-align: center;
-            z-index: 10001;
-            font-family: Arial, sans-serif;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        `;
-        document.body.appendChild(errorContainer);
-    }
-    
-    errorContainer.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-exclamation-triangle"></i>
-                <span>${message}</span>
-            </div>
-            <button onclick="this.parentElement.parentElement.style.display='none'" 
-                    style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px;">
-                Tutup
-            </button>
-        </div>
-    `;
-}
-
-// ============================================
-// FUNGSI UTILITAS
-// ============================================
-function getCurrentUser() {
-    return firebaseAuth ? firebaseAuth.currentUser : null;
-}
-
-function getCurrentUserInfo() {
-    const user = getCurrentUser();
-    if (!user) return null;
-    
-    return teacherClassMapping[user.email] || {
-        email: user.email,
-        role: 'unknown',
-        classes: [],
-        name: user.email.split('@')[0]
-    };
-}
-
-function isAdminUser() {
-    const userInfo = getCurrentUserInfo();
-    return userInfo && userInfo.role === 'admin';
-}
-
-function getUserClasses() {
-    const userInfo = getCurrentUserInfo();
-    return userInfo ? userInfo.classes : [];
-}
-
-// ============================================
-// INISIALISASI DATA CONTOH
-// ============================================
-function initializeSampleData() {
-    if (!firebaseDatabase) {
-        console.error("Database belum tersedia");
-        return;
-    }
-    
-    firebaseDatabase.ref('students').once('value')
-        .then(snapshot => {
-            if (!snapshot.exists()) {
-                console.log("📝 Membuat data contoh siswa...");
-                createSampleStudents();
-            } else {
-                console.log("✅ Data siswa sudah ada");
-            }
-        })
-        .catch(error => {
-            console.error("Error memeriksa data:", error);
-        });
-}
-
-function createSampleStudents() {
-    const classes = ['1A', '1B', '1C', '1D', '2A', '2B', '2C', '2D', '2E', 
-                    '3A', '3B', '3C', '3D', '3E', '4A', '4B', '4C', '4D', '4E', '4F',
-                    '5A', '5B', '5C', '5D', '5E', '6A', '6B', '6C', '6D', '6E'];
-    
-    const sampleNames = [
-        'Ahmad Fauzi', 'Budi Santoso', 'Citra Dewi', 'Dian Pratiwi', 'Eko Prasetyo',
-        'Fitriani Sari', 'Gunawan Wijaya', 'Hesti Utami', 'Indra Setiawan', 'Joko Susilo'
-    ];
-    
-    const promises = [];
-    
-    classes.forEach(className => {
-        const classRef = firebaseDatabase.ref(`students/${className}`);
-        
-        // Buat 5-8 siswa per kelas
-        for (let i = 1; i <= Math.floor(Math.random() * 4) + 5; i++) {
-            const studentRef = classRef.push();
-            const randomName = sampleNames[Math.floor(Math.random() * sampleNames.length)];
-            
-            const studentData = {
-                nama: `${randomName} ${i}`,
-                kelas: className,
-                jenis_kelamin: i % 2 === 0 ? 'L' : 'P',
-                tanggal_lahir: new Date(2010 + parseInt(className[0]), 
-                                       Math.floor(Math.random() * 12), 
-                                       Math.floor(Math.random() * 28) + 1).toISOString(),
-                nama_ortu: `Orang Tua ${randomName}`,
-                tanggal_daftar: new Date().toISOString(),
-                status: 'aktif'
-            };
-            
-            promises.push(studentRef.set(studentData));
-        }
-    });
-    
-    Promise.all(promises)
-        .then(() => {
-            console.log("✅ Data contoh siswa berhasil dibuat");
-            showNotification("Data contoh berhasil dibuat", "success");
-        })
-        .catch(error => {
-            console.error("❌ Gagal membuat data contoh:", error);
-        });
-}
-
-// ============================================
-// LOAD FIREBASE SDK - DIPERBAIKI
-// ============================================
-function loadFirebaseSDK() {
-    console.log("📥 Memuat Firebase SDK...");
-    
-    // Cek apakah sudah dimuat
-    if (typeof firebase !== 'undefined') {
-        console.log("✅ Firebase SDK sudah dimuat");
-        return true;
-    }
-    
-    const scripts = [
-        'https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js',
-        'https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js',
-        'https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js'
-    ];
-    
-    let loaded = 0;
-    let hasError = false;
-    
-    // Fungsi untuk cek apakah semua script sudah dimuat
-    function checkAllLoaded() {
-        if (hasError) return false;
-        if (loaded === scripts.length) {
-            console.log("✅ Semua Firebase SDK berhasil dimuat");
-            return true;
-        }
-        return false;
-    }
-    
-    scripts.forEach(src => {
-        // Cek apakah script sudah ada
-        const existingScript = document.querySelector(`script[src="${src}"]`);
-        if (existingScript) {
-            console.log(`⚠️ Script sudah ada: ${src}`);
-            loaded++;
-            if (checkAllLoaded()) {
-                initializeFirebase();
-            }
-            return;
-        }
-        
-        const script = document.createElement('script');
-        script.src = src;
-        script.async = true;
-        
-        script.onload = () => {
-            loaded++;
-            console.log(`✅ Berhasil memuat: ${src}`);
-            
-            if (checkAllLoaded()) {
-                // Beri waktu untuk SDK diinisialisasi
-                setTimeout(() => {
-                    initializeFirebase();
-                }, 500);
-            }
-        };
-        
-        script.onerror = () => {
-            console.error(`❌ Gagal memuat: ${src}`);
-            hasError = true;
-            showGlobalError(`Gagal memuat Firebase SDK: ${src}`);
-        };
-        
-        document.head.appendChild(script);
-    });
-    
-    return !hasError;
+    console.error("🌍 Global Error:", message);
+    showNotification(message, 'error', 5000);
 }
 
 // ============================================
@@ -786,34 +467,83 @@ window.firebaseApp = {
     
     // Status
     isInitialized: () => isFirebaseInitialized,
+    isConnected: () => window.firebaseConnectionStatus || false,
     
-    // Fungsi Autentikasi
+    // Fungsi Autentikasi (NON-REDIRECTING)
     checkAuth: checkAuth,
     logout: logout,
-    getCurrentUser: getCurrentUser,
-    getCurrentUserInfo: getCurrentUserInfo,
-    isAdmin: isAdminUser,
-    getUserClasses: getUserClasses,
+    getCurrentUser: () => firebaseAuth ? firebaseAuth.currentUser : null,
+    getCurrentUserInfo: () => {
+        const user = firebaseAuth ? firebaseAuth.currentUser : null;
+        if (!user) return null;
+        return teacherClassMapping[user.email] || {
+            email: user.email,
+            role: 'unknown',
+            classes: [],
+            name: user.email.split('@')[0]
+        };
+    },
     
-    // FUNGSI ADMIN BARU - DITAMBAHKAN
-    deleteAllScores: deleteAllScores,
-    deleteAllAttendance: deleteAllAttendance,
-    getStudents: getStudents,
-    updateStudent: updateStudent,
-    deleteStudent: deleteStudent,
+    // FUNGSI REALTIME
+    setupRealtimeListeners: setupRealtimeListeners,
+    removeAllListeners: removeAllListeners,
+    
+    // Data cache
+    getCachedStudents: () => realtimeData.students,
+    getCachedAttendance: () => realtimeData.attendance,
+    getCachedScores: () => realtimeData.scores,
+    
+    // Fungsi Admin
+    getStudents: async function(kelas = null, realtime = false) {
+        if (!firebaseDatabase) {
+            throw new Error("Database tidak tersedia");
+        }
+        
+        try {
+            let path = 'students';
+            if (kelas) {
+                path = `students/${kelas}`;
+            }
+            
+            const snapshot = await firebaseDatabase.ref(path).once('value');
+            
+            if (!snapshot.exists()) {
+                return [];
+            }
+            
+            const students = [];
+            if (kelas) {
+                snapshot.forEach((childSnapshot) => {
+                    const student = childSnapshot.val();
+                    student.id = childSnapshot.key;
+                    students.push(student);
+                });
+            } else {
+                snapshot.forEach((classSnapshot) => {
+                    classSnapshot.forEach((childSnapshot) => {
+                        const student = childSnapshot.val();
+                        student.id = childSnapshot.key;
+                        students.push(student);
+                    });
+                });
+            }
+            
+            return students;
+            
+        } catch (error) {
+            console.error("Error mendapatkan siswa:", error);
+            throw error;
+        }
+    },
     
     // Fungsi Notifikasi
     showNotification: showNotification,
-    showError: showGlobalError,
-    
-    // Fungsi Data
-    initSampleData: initializeSampleData,
     
     // Inisialisasi
     initialize: initializeFirebase,
     
-    // Load SDK
-    loadSDK: loadFirebaseSDK
+    // Flag untuk mencegah redirect loops
+    isRedirecting: () => isRedirecting
 };
 
 // ============================================
@@ -836,76 +566,40 @@ window.firebaseApp = {
             }
         }
         
-        @keyframes slideOut {
-            from {
-                opacity: 1;
-                transform: translateX(0);
-            }
-            to {
-                opacity: 0;
-                transform: translateX(100%);
-            }
+        .firebase-notification {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
     `;
     document.head.appendChild(style);
-    
-    // Fungsi init dengan retry mechanism
-    function initFirebaseApp() {
-        console.log("📄 Menginisialisasi Firebase App...");
-        
-        // Cek apakah Firebase SDK sudah dimuat
-        if (typeof firebase === 'undefined') {
-            console.log("⚠️ Firebase SDK belum dimuat, menunggu...");
-            
-            // Coba lagi setelah 1 detik
-            setTimeout(() => {
-                if (typeof firebase === 'undefined') {
-                    console.log("🔄 Mencoba memuat Firebase SDK otomatis...");
-                    loadFirebaseSDK();
-                } else {
-                    console.log("✅ Firebase SDK sudah dimuat, lanjut inisialisasi...");
-                    initializeFirebase();
-                }
-            }, 1000);
-            return;
-        }
-        
-        // Jika SDK sudah dimuat, langsung inisialisasi
-        console.log("✅ Firebase SDK terdeteksi, menginisialisasi...");
-        const success = initializeFirebase();
-        
-        if (success) {
-            console.log("✅ Firebase App berhasil diinisialisasi");
-            
-            // Inisialisasi data contoh setelah beberapa detik
-            setTimeout(() => {
-                if (getCurrentUser()) {
-                    initializeSampleData();
-                }
-            }, 3000);
-        } else {
-            console.warn("⚠️ Gagal menginisialisasi Firebase, akan coba lagi...");
-            
-            // Coba lagi setelah 3 detik
-            setTimeout(() => {
-                console.log("🔄 Mencoba inisialisasi ulang...");
-                initFirebaseApp();
-            }, 3000);
-        }
-    }
     
     // Tunggu DOM siap
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             console.log("📄 DOM siap, memulai inisialisasi Firebase...");
-            // Beri waktu untuk script lain dimuat
-            setTimeout(initFirebaseApp, 500);
+            // Delay untuk menghindari race condition dengan auth-validator
+            setTimeout(() => {
+                initializeFirebase();
+            }, 500);
         });
     } else {
         console.log("📄 DOM sudah siap, memulai inisialisasi Firebase...");
-        // Beri waktu untuk script lain dimuat
-        setTimeout(initFirebaseApp, 500);
+        setTimeout(() => {
+            initializeFirebase();
+        }, 500);
     }
 })();
 
 console.log("✅ Firebase App module telah dimuat");
+
+// Fungsi untuk membersihkan data user
+function clearUserData() {
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('teacherClasses');
+    localStorage.removeItem('userClasses');
+    localStorage.removeItem('loginTime');
+    console.log("🧹 Data user dibersihkan dari localStorage");
+}
+
+window.clearUserData = clearUserData;
